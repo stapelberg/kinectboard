@@ -376,7 +376,11 @@ int main(int argc, char *argv[]) {
     targetarea_raw_depth.h = kinect_rgb->h;
 
     //create Font
-    TTF_Font* font= TTF_OpenFont("FreeMono.ttf", 40);
+    TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeMono.ttf", 40);
+    if (!font) {
+        printf("font not found\n");
+        return 1;
+    }
     //Text colors
     SDL_Color foregroundColor = { 255, 255, 255 };
     SDL_Color backgroundColor = { 0, 0, 255 };
