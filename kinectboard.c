@@ -42,7 +42,10 @@
 
 #include <math.h>
 
-#define SCREEN_WIDTH 640
+#define elem_type int
+#include "quickselect.c"
+
+#define SCREEN_WIDTH (640 * 2)
 #define SCREEN_HEIGHT 480
 #define SCREEN_DEPTH 32
 
@@ -56,10 +59,16 @@ int window;
 
 pthread_mutex_t gl_backbuf_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+unsigned char depthPixelsLookupNearWhite[2048];
+
 // back: owned by libfreenect (implicit for depth)
 // mid: owned by callbacks, "latest frame ready"
 // front: owned by GL, "currently being drawn"
+
+// processed depth (with a median filter)
 uint8_t *depth_mid, *depth_front;
+// raw depth (as received from kinect)
+uint8_t *raw_depth_mid, *raw_depth_front;
 uint8_t *rgb_back, *rgb_mid, *rgb_front;
 
 GLuint gl_depth_tex;
@@ -108,11 +117,85 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
     pthread_mutex_unlock(&gl_backbuf_mutex);
 }
 
+#define row_col_to_px(row, col) ((row) * 640 + (col))
+
 void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 {
-    int i;
+    int i, col, row;
     uint16_t *depth = (uint16_t*)v_depth;
     pthread_mutex_lock(&gl_backbuf_mutex);
+    for (row = 0; row < (480); row++) {
+        for (col = 0; col < 640; col++) {
+            i = row * 640 + col;
+            raw_depth_mid[3*i+0] = depthPixelsLookupNearWhite[depth[i]];
+            raw_depth_mid[3*i+1] = depthPixelsLookupNearWhite[depth[i]];
+            raw_depth_mid[3*i+2] = depthPixelsLookupNearWhite[depth[i]];
+            if (col < 10 || col > (640-10)) {
+                depth_mid[3 * i + 0] = depthPixelsLookupNearWhite[depth[i]];
+                depth_mid[3 * i + 1] = depthPixelsLookupNearWhite[depth[i]];
+                depth_mid[3 * i + 2] = depthPixelsLookupNearWhite[depth[i]];
+                continue;
+            }
+
+#if 0
+            /* 3x3 */
+        int neighbors[] = {
+            /* links */
+            depth[row_col_to_px(row-1, col-1)],
+            depth[row_col_to_px(row, col-1)],
+            depth[row_col_to_px(row+1, col-1)],
+            /* mitte */
+            depth[row_col_to_px(row-1, col)],
+            depth[row_col_to_px(row, col)],
+            depth[row_col_to_px(row+1, col)],
+            /* rechts */
+            depth[row_col_to_px(row-1, col+1)],
+            depth[row_col_to_px(row, col+1)],
+            depth[row_col_to_px(row+1, col+1)],
+        };
+#endif
+
+            /* 5x5 */
+        int neighbors[] = {
+            depth[row_col_to_px(row-2, col-2)],
+            depth[row_col_to_px(row-1, col-2)],
+            depth[row_col_to_px(row, col-2)],
+            depth[row_col_to_px(row+1, col-2)],
+            depth[row_col_to_px(row+2, col-2)],
+            /* links */
+            depth[row_col_to_px(row-2, col-1)],
+            depth[row_col_to_px(row-1, col-1)],
+            depth[row_col_to_px(row, col-1)],
+            depth[row_col_to_px(row+1, col-1)],
+            depth[row_col_to_px(row+2, col-1)],
+            /* mitte */
+            depth[row_col_to_px(row-2, col)],
+            depth[row_col_to_px(row-1, col)],
+            depth[row_col_to_px(row, col)],
+            depth[row_col_to_px(row+1, col)],
+            depth[row_col_to_px(row+2, col)],
+            /* rechts */
+            depth[row_col_to_px(row-2, col+1)],
+            depth[row_col_to_px(row-1, col+1)],
+            depth[row_col_to_px(row, col+1)],
+            depth[row_col_to_px(row+1, col+1)],
+            depth[row_col_to_px(row+2, col+1)],
+
+            depth[row_col_to_px(row-2, col+2)],
+            depth[row_col_to_px(row-1, col+2)],
+            depth[row_col_to_px(row, col+2)],
+            depth[row_col_to_px(row+1, col+2)],
+            depth[row_col_to_px(row+2, col+2)],
+        };
+
+        int pval = quick_select(neighbors, sizeof(neighbors) / sizeof(int));
+
+        pval = depthPixelsLookupNearWhite[pval];
+        depth_mid[3 * i + 0] = pval;
+        depth_mid[3 * i + 1] = pval;
+        depth_mid[3 * i + 2] = pval;
+        }
+    }
     got_depth++;
     pthread_cond_signal(&gl_frame_cond);
     pthread_mutex_unlock(&gl_backbuf_mutex);
@@ -201,8 +284,22 @@ int main(int argc, char *argv[]) {
     int         x = 10; //x coordinate of our pixel
     int         y = 20; //y coordinate of our pixel
 
+
+    int i;
+    for (i=0; i<2048; i++) {
+        const float k1 = 1.1863;
+        const float k2 = 2842.5;
+        const float k3 = 0.1236;
+        //const float depth = k3 * tanf(i/k2 + k1);
+        //t_gamma[i] = depth;
+        depthPixelsLookupNearWhite[i] = (float) (2048 * 256) / (i - 2048);
+    }
+
     depth_mid = (uint8_t*)malloc(640*480*3);
     depth_front = (uint8_t*)malloc(640*480*3);
+    raw_depth_mid = (uint8_t*)malloc(640*480*3);
+    raw_depth_front = (uint8_t*)malloc(640*480*3);
+
     rgb_back = (uint8_t*)malloc(640*480*3);
     rgb_mid = (uint8_t*)malloc(640*480*3);
     rgb_front = (uint8_t*)malloc(640*480*3);
@@ -262,6 +359,20 @@ int main(int argc, char *argv[]) {
 #endif
 
     SDL_Surface *kinect_rgb = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 480, 24, rmask, gmask, bmask, amask);
+    SDL_Surface *kinect_rgb_unfiltered = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 480, 24, rmask, gmask, bmask, amask);
+
+    SDL_Rect targetarea_depth;
+    SDL_Rect targetarea_raw_depth;
+    targetarea_depth.x = 0;
+    targetarea_depth.y = 0;
+    targetarea_depth.w = kinect_rgb->w;
+    targetarea_depth.h = kinect_rgb->h;
+
+    targetarea_raw_depth.x = 640;
+    targetarea_raw_depth.y = 0;
+    targetarea_raw_depth.w = kinect_rgb->w;
+    targetarea_raw_depth.h = kinect_rgb->h;
+
 
     while (1) {
         pthread_mutex_lock(&gl_backbuf_mutex);
@@ -289,6 +400,11 @@ int main(int argc, char *argv[]) {
             tmp = depth_front;
             depth_front = depth_mid;
             depth_mid = tmp;
+
+            tmp = raw_depth_front;
+            raw_depth_front = raw_depth_mid;
+            raw_depth_mid = tmp;
+
             got_depth = 0;
         }
         if (got_rgb) {
@@ -300,17 +416,14 @@ int main(int argc, char *argv[]) {
 
         pthread_mutex_unlock(&gl_backbuf_mutex);
 
-        memcpy(kinect_rgb->pixels, rgb_front, 640 * 480 * 3);
-        SDL_Rect targetarea;
-        targetarea.x = 0;
-        targetarea.y = 0;
-        targetarea.w = kinect_rgb->w;
-        targetarea.h = kinect_rgb->h;
+        //memcpy(kinect_rgb->pixels, rgb_front, 640 * 480 * 3);
+        memcpy(kinect_rgb->pixels, depth_mid, 640 * 480 * 3);
+        SDL_BlitSurface(kinect_rgb, NULL, screen, &targetarea_depth);
 
-	SDL_BlitSurface(kinect_rgb, NULL, screen, &targetarea);
+        memcpy(kinect_rgb_unfiltered->pixels, raw_depth_mid, 640 * 480 * 3);
+        SDL_BlitSurface(kinect_rgb_unfiltered, NULL, screen, &targetarea_raw_depth);
 
-	// Poll Events
-	kb_poll_events();
+        kb_poll_events();
 
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
