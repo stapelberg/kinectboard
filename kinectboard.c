@@ -169,6 +169,31 @@ void *freenect_threadfunc(void *arg)
     return NULL;
 }
 
+void kb_poll_events() {
+	SDL_Event event;
+	while ( SDL_PollEvent(&event) ) {
+		switch (event.type) {
+			case SDL_MOUSEMOTION:
+				printf("Mouse moved by %d,%d to (%d,%d)\n", 
+				event.motion.xrel, event.motion.yrel,
+				event.motion.x, event.motion.y);
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+				printf("Mouse button %d pressed at (%d,%d)\n",
+				event.button.button, event.button.x, event.button.y);
+				break;
+
+			case SDL_KEYDOWN:
+				if(event.key.keysym.sym == SDLK_ESCAPE) {
+					exit(0);	
+				}
+				break;
+			case SDL_QUIT:
+			exit(0);		
+		}
+	}		
+}
+
 int main(int argc, char *argv[]) {
 
     SDL_Surface *screen;
@@ -282,7 +307,10 @@ int main(int argc, char *argv[]) {
         targetarea.w = kinect_rgb->w;
         targetarea.h = kinect_rgb->h;
 
-        SDL_BlitSurface(kinect_rgb, NULL, screen, &targetarea);
+	SDL_BlitSurface(kinect_rgb, NULL, screen, &targetarea);
+
+	// Poll Events
+	kb_poll_events();
 
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
