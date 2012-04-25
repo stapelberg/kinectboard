@@ -14,20 +14,22 @@ Required Librarys
 
 Install libfreenect
 -------------------
-If you have ibfreenect already installed, please check the modules path.
 
-1. Download libfrenect
-2. Extract libfreenect
-3. Switch into libfreenect directory
-4. cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr CMakeLists.txt 
-5. make
-6. make install
+Install the latest git version of libfreenect. We used version
+`efd073eacfc54a7c028729596858d1618e134b16`:
+
+    git clone git://github.com/OpenKinect/libfreenect.git
+    cd libfreenect
+    cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr CMakeLists.txt
+    make
+    sudo make install
 
 Build with cmake
 ----------------
 
-1. cd pathToKinectboard
-2. cmake .
-3. make
-4. make install
+Afterwards, build kinectboard:
 
+    git clone git://github.com/mstap/kinectboard.git
+    cd kinectboard
+    cmake .
+    make
