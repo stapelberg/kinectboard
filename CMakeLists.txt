@@ -3,10 +3,6 @@
 ######################################################################################
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules)
-
-#include(FindLibfreenect.cmake)
-
 set(CMAKE_C_FLAGS "-Wall")
 
 if (WIN32)
@@ -32,7 +28,6 @@ else()
   find_package(GLUT REQUIRED)
   find_package(SDL REQUIRED)
   find_package(SDL_ttf REQUIRED)
-  find_package(LIBFREENECT REQUIRED)
 
   include(FindPkgConfig)
   pkg_check_modules(FREENECT "libfreenect")
@@ -40,9 +35,9 @@ else()
   add_definitions(${FREENECT_CFLAGS})
   link_libraries(${FREENECT_LDFLAGS})
 
-  include_directories(${OPENGL_INCLUDE_DIRS} ${SDL_INCLUDE_DIR} ${GLUT_INCLUDE_DIRS} ${USB_INCLUDE_DIRS} ${LIBFREENECT_INCLUDE_DIRS})
+  include_directories(${OPENGL_INCLUDE_DIRS} ${SDL_INCLUDE_DIR} ${GLUT_INCLUDE_DIRS} ${USB_INCLUDE_DIRS})
 
-  target_link_libraries(kinectboard freenect ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB} ${LIBFREENECT_LIBRARIES})
+  target_link_libraries(kinectboard freenect ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
 endif()
 
 install (TARGETS kinectboard DESTINATION bin)
