@@ -30,11 +30,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "libfreenect.h"
+#include <libfreenect.h>
 
 #include <pthread.h>
 
 #include <SDL/SDL.h>
+#include <SDL/SDL_ttf.h>
 
 #include <GL/glut.h>
 #include <GL/gl.h>
@@ -339,6 +340,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialize SDL */
     SDL_Init(SDL_INIT_VIDEO);
+    TTF_Init();
 
     /* Initialize the screen / window */
     screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_DEPTH, SDL_SWSURFACE);
@@ -373,6 +375,15 @@ int main(int argc, char *argv[]) {
     targetarea_raw_depth.w = kinect_rgb->w;
     targetarea_raw_depth.h = kinect_rgb->h;
 
+    //create Font
+    TTF_Font* font= TTF_OpenFont("FreeMono.ttf", 40);
+    //Text colors
+    SDL_Color foregroundColor = { 255, 255, 255 };
+    SDL_Color backgroundColor = { 0, 0, 255 };
+
+//    SDL_Surface* textSurface = TTF_RenderText_Shaded(font, "This is my text.", foregroundColor, backgroundColor);
+    SDL_Surface* textSurface = TTF_RenderText_Solid(font, "This is my text.", foregroundColor);
+    SDL_Rect textLocation = { 10, 10, 0, 0 };
 
     while (1) {
         pthread_mutex_lock(&gl_backbuf_mutex);
@@ -424,6 +435,8 @@ int main(int argc, char *argv[]) {
         SDL_BlitSurface(kinect_rgb_unfiltered, NULL, screen, &targetarea_raw_depth);
 
         kb_poll_events();
+
+        SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
 
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
