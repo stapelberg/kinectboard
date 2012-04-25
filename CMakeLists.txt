@@ -35,9 +35,9 @@ else()
   add_definitions(${FREENECT_CFLAGS})
   link_libraries(${FREENECT_LDFLAGS})
 
-  include_directories(${OPENGL_INCLUDE_DIRS} ${SDL_INCLUDE_DIR} ${GLUT_INCLUDE_DIRS} ${USB_INCLUDE_DIRS})
+  include_directories(${OPENGL_INCLUDE_DIRS} ${SDL_INCLUDE_DIR} ${SDLTTF_INCLUDE_DIR} ${GLUT_INCLUDE_DIRS} ${USB_INCLUDE_DIRS})
 
-  target_link_libraries(kinectboard freenect ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
+  target_link_libraries(kinectboard freenect ${SDLTTF_LIBRARY} ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
 endif()
 
 install (TARGETS kinectboard DESTINATION bin)
