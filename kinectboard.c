@@ -133,7 +133,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
             raw_depth_mid[3*i+0] = depthPixelsLookupNearWhite[depth[i]];
             raw_depth_mid[3*i+1] = depthPixelsLookupNearWhite[depth[i]];
             raw_depth_mid[3*i+2] = depthPixelsLookupNearWhite[depth[i]];
-            if (col < 10 || col > (640-10)) {
+            if (col < 10 || col > (640-10) || row < 10 || row < (480-10)) {
                 depth_mid[3 * i + 0] = depthPixelsLookupNearWhite[depth[i]];
                 depth_mid[3 * i + 1] = depthPixelsLookupNearWhite[depth[i]];
                 depth_mid[3 * i + 2] = depthPixelsLookupNearWhite[depth[i]];

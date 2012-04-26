@@ -3,7 +3,7 @@
 ######################################################################################
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_C_FLAGS "-Wall")
+set(CMAKE_C_FLAGS "-Wall -g")
 
 if (WIN32)
   set_source_files_properties(kinectboard.c kinectboard_controls.c PROPERTIES LANGUAGE CXX)
