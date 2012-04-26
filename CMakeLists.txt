@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 2.8)
 set(CMAKE_C_FLAGS "-Wall")
 
 if (WIN32)
-  set_source_files_properties(kinectboard.c PROPERTIES LANGUAGE CXX)
+  set_source_files_properties(kinectboard.c kinectboard_controls.c PROPERTIES LANGUAGE CXX)
 
   set(THREADS_USE_PTHREADS_WIN32 true)
   find_package(Threads REQUIRED)
@@ -14,7 +14,7 @@ if (WIN32)
   include_directories(${THREADS_PTHREADS_INCLUDE_DIR})
 endif()
 
-add_executable(kinectboard kinectboard.c)
+add_executable(kinectboard kinectboard.c kinectboard_controls.c)
 
 # Mac just has everything already
 if(APPLE)

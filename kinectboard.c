@@ -46,6 +46,8 @@
 #define elem_type int
 #include "quickselect.c"
 
+#include "kinectboard_controls.h"
+
 #define SCREEN_WIDTH (640 * 2)
 #define SCREEN_HEIGHT 480
 #define SCREEN_DEPTH 32
@@ -253,29 +255,31 @@ void *freenect_threadfunc(void *arg)
     return NULL;
 }
 
-void kb_poll_events() {
-	SDL_Event event;
-	while ( SDL_PollEvent(&event) ) {
-		switch (event.type) {
-			case SDL_MOUSEMOTION:
-				printf("Mouse moved by %d,%d to (%d,%d)\n", 
-				event.motion.xrel, event.motion.yrel,
-				event.motion.x, event.motion.y);
-				break;
-			case SDL_MOUSEBUTTONDOWN:
-				printf("Mouse button %d pressed at (%d,%d)\n",
-				event.button.button, event.button.x, event.button.y);
-				break;
+// Callback for button 1
+void btn_test_funct(void* placeholder) {
+    printf("Button pressed\n");
+    fflush(stdout);
+}
 
-			case SDL_KEYDOWN:
-				if(event.key.keysym.sym == SDLK_ESCAPE) {
-					exit(0);	
-				}
-				break;
-			case SDL_QUIT:
-			exit(0);		
-		}
-	}		
+void kb_poll_events(kb_controls* list) {
+    SDL_Event event;
+    while ( SDL_PollEvent(&event) ) {
+        switch (event.type) {
+            case SDL_MOUSEMOTION:
+                kb_process_mouse_motion(list, event.motion.x, event.motion.y); 
+                break;
+            case SDL_MOUSEBUTTONDOWN:
+                kb_process_input(list, event.button.button, event.button.x, event.button.y);
+            break;
+            case SDL_KEYDOWN:
+                if(event.key.keysym.sym == SDLK_ESCAPE) {
+                    exit(0);	
+                }
+            break;
+	    case SDL_QUIT:
+            exit(0);	
+        }
+    }		
 }
 
 int main(int argc, char *argv[]) {
@@ -389,6 +393,18 @@ int main(int argc, char *argv[]) {
     SDL_Surface* textSurface = TTF_RenderText_Solid(font, "This is my text.", foregroundColor);
     SDL_Rect textLocation = { 10, 10, 0, 0 };
 
+    kb_controls* list = kb_controls_create();
+    
+    // Some Buttons
+    kb_button* btn = kb_button_create(list,100,25,10,10, &btn_test_funct);
+    kb_controls_add_control(list, KB_BUTTON, btn);
+    
+    kb_button* btn1 = kb_button_create(list,100,25,120,10, &btn_test_funct);
+    kb_controls_add_control(list, KB_BUTTON, btn1);
+    
+    kb_button* btn2 = kb_button_create(list,100,25,230,10, &btn_test_funct);
+    kb_controls_add_control(list, KB_BUTTON, btn2);
+    
     while (1) {
         pthread_mutex_lock(&gl_backbuf_mutex);
 
@@ -438,11 +454,19 @@ int main(int argc, char *argv[]) {
         memcpy(kinect_rgb_unfiltered->pixels, raw_depth_mid, 640 * 480 * 3);
         SDL_BlitSurface(kinect_rgb_unfiltered, NULL, screen, &targetarea_raw_depth);
 
-        kb_poll_events();
+        kb_poll_events(list);
+        
+        kb_controls_render(list, screen);
 
         SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
-
+        
+    
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
     }
+    
+    kb_button_destroy(list, btn);
+    kb_button_destroy(list, btn1);
+    kb_button_destroy(list, btn2);
+    kb_controls_destroy(list);
 }
