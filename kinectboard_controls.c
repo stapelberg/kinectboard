@@ -43,20 +43,161 @@ int __compare_btn(kb_button* lhs, kb_button* rhs) {
     return (lhs != 0 && rhs != 0) ? (rhs->id == lhs->id ? 0 : 1) : -1; 
 }
 
-void __kb_unregister_button(kb_controls* list, kb_button* btn) {
+int __compare_slider(kb_slider* lhs, kb_slider* rhs) {
+    return (lhs != 0 && rhs != 0) ? (rhs->id == lhs->id ? 0 : 1) : -1; 
+}
+
+void __kb_unregister_control(kb_controls* list, void* control) {
     if(!list) { return; }
     if(list->root->type == KB_BUTTON) {
-        if(__compare_btn((kb_button*)list->root, btn) == 0) {
+        if(__compare_btn((kb_button*)list->root, (kb_button*)control) == 0) {
+            list->root = list->root->next;
+        } 
+    }
+    
+     if(list->root->type == KB_SLIDER) {
+        if(__compare_slider((kb_slider*)list->root, (kb_slider*)control) == 0) {
             list->root = list->root->next;
         } 
     }
     
     kb_controls_node* ptr = list->root;	
 	while(ptr != 0) {
-        if(ptr->type == KB_BUTTON && ptr->data != 0 && __compare_btn((kb_button*)ptr->data, btn) == 0) {
+        if(ptr->type == KB_BUTTON && ptr->data != 0 
+	    && __compare_btn((kb_button*)ptr->data, (kb_button*)control) == 0) {
+            ptr->data = ptr->next;
+        }
+	 if(ptr->type == KB_SLIDER && ptr->data != 0 
+	    && __compare_slider((kb_slider*)ptr->data, (kb_slider*)control) == 0) {
             ptr->data = ptr->next;
         }
     }
+}
+
+/* ******************************************************************* */
+/* KB Controls Logic */
+
+kb_controls* kb_controls_create() 
+{
+    kb_controls* list = (kb_controls*)malloc(sizeof(kb_controls));
+    list->root = 0;
+    list->size = 0;
+    return list; 
+}
+
+void kb_controls_destroy(kb_controls* ptr)
+{
+    free(ptr);
+    ptr = 0;
+}
+
+void kb_controls_add_control(kb_controls* list, kb_type type, void* ptr)
+{
+    kb_controls_node* node = (kb_controls_node*)malloc(sizeof(kb_controls_node));
+    node->parent = 0;
+    node->next = 0;
+    node->data = ptr;
+    node->type = type;
+    
+    if(!list) { 
+	    free(node); 
+	    return; 
+    }
+    
+    if(!list->root && list->size == 0)  {
+	    list->size++;
+	    list->root = node;
+	    return;
+    }
+    
+    kb_controls_node* next = list->root; 
+    
+    while(next->next != 0) {
+        next = next->next;
+    }
+    
+    
+    next->next = node;
+    node->parent = next;
+    list->size++;
+}
+
+void kb_process_mouse_motion(kb_controls* list, uint8_t button, int x, int y, int x_rel, int y_rel)
+{    
+    if(!list) { return; } 
+
+	kb_controls_node* ptr = list->root;
+		
+	while(ptr != 0) {
+        if(ptr->data != 0) {
+            if(ptr->type == KB_BUTTON) {
+                kb_button* btn = (kb_button*)ptr->data;
+                btn->state = __kb_mouse_over(x, y, &btn->box); 
+            }
+	    if(ptr->type == KB_SLIDER) {
+                kb_slider* slider = (kb_slider*)ptr->data;
+		slider->state = __kb_mouse_over(x, y, &slider->knob_box);
+		if(button == 1) {
+		    if(slider->state > 0 && __kb_mouse_over(x, y, &slider->box)) {
+			// Maybe needs some adjustments to make it more "grabable"
+			slider->knob_box.x += x_rel;
+			slider->callback(((0.f + (x - slider->box.x + (slider->knob_box.w / 2))) / slider->box.w*1.f));
+		    }
+		}
+            }
+        }
+        ptr = ptr->next;
+	}
+}
+
+void kb_process_input(kb_controls* list, uint8_t button, int x, int y)
+{    
+    if(!list) { return; } 
+
+    kb_controls_node* ptr = list->root;	
+	while(ptr != 0) {
+        if(ptr->data != 0) {
+            if(ptr->type == KB_BUTTON) {
+                kb_button* btn = (kb_button*)ptr->data;
+                if(__kb_mouse_over(x, y, &btn->box) > 0) {
+                    btn->callback(0);
+                }
+            } 
+	    if(ptr->type == KB_SLIDER) {
+	    kb_slider* slider = (kb_slider*)ptr->data;
+                if(__kb_mouse_over(x, y, &slider->box) > 0) {
+		    slider->knob_box.x = x - (slider->knob_box.w / 2);
+                    slider->callback(((0.f + (x - slider->box.x + (slider->knob_box.w / 2))) / slider->box.w*1.f));
+                }
+            } 
+        }
+		
+        ptr = ptr->next;
+	}
+}
+ 
+void kb_controls_render(kb_controls* list, SDL_Surface* screen) 
+{
+	if(!list) { return; } 
+
+	kb_controls_node* ptr = list->root;
+	while(ptr != 0) {
+        if(ptr->data != 0) {
+            if(ptr->type == KB_BUTTON) {
+                kb_button* btn = (kb_button*)ptr->data;
+                SDL_BlitSurface(btn->state > 0 ?  btn->btn_hover : btn->btn_norm, NULL, screen, &btn->box);
+            }
+	    else if(ptr->type == KB_SLIDER) {
+                kb_slider* slider = (kb_slider*)ptr->data;	
+		
+                SDL_BlitSurface(slider->slider_pane, NULL, screen, &slider->pane_box);
+		
+                SDL_BlitSurface(slider->state > 0 ?  slider->slider_knob_hover : slider->slider_knob_norm, NULL, screen, &slider->knob_box);
+            }
+        }
+		
+        ptr = ptr->next;
+	}
 }
 
 /* ******************************************************************* */
@@ -87,12 +228,15 @@ kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, 
 
     btn->state = 0;
     btn->id = ++CONTROL_ID;
-	return btn;
+    
+    kb_controls_add_control(list, KB_BUTTON, btn);
+	
+    return btn;
 }
 
 void kb_button_destroy(kb_controls* list, kb_button* btn) 
 {
-	__kb_unregister_button(list, btn);
+	__kb_unregister_control(list, btn);
 	SDL_FreeSurface(btn->btn_norm);
 	SDL_FreeSurface(btn->btn_hover);
 	
@@ -100,101 +244,73 @@ void kb_button_destroy(kb_controls* list, kb_button* btn)
 	btn = 0;
 }
 /* ******************************************************************* */
-/* KB Controls Logic */
-
-kb_controls* kb_controls_create() 
+/* KB Slider */
+kb_slider* kb_slider_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_slider_cb slider_moved_callback, float initial_value)
 {
-	kb_controls* list = (kb_controls*)malloc(sizeof(kb_controls));
-	list->root = 0;
-	list->size = 0;
-	return list; 
-}
-
-void kb_controls_destroy(kb_controls* ptr)
-{
-	free(ptr);
-}
-
-void kb_controls_add_control(kb_controls* list, kb_type type, void* ptr)
-{
-	kb_controls_node* node = (kb_controls_node*)malloc(sizeof(kb_controls_node));
-	node->parent = 0;
-	node->next = 0;
-	node->data = ptr;
-	node->type = type;
-	
-	if(!list) { 
-		free(node); 
-		return; 
-	}
-	
-	if(!list->root && list->size == 0)  {
-		list->size++;
-		list->root = node;
-		return;
-	}
-    
-    kb_controls_node* next = list->root; 
-    
-    while(next->next != 0) {
-        next = next->next;
+    if(initial_value < 0.f || initial_value > 100.f) {
+	printf("ERROR creating slider: Initial value must be between 0.0 and 100.0; value was %f", initial_value);
+	fflush(stdout);
+	return 0;
     }
     
+    kb_slider* slider = (kb_slider*)malloc(sizeof(kb_slider));
     
-    next->next = node;
-    node->parent = next;
-    list->size++;
+    slider->callback = slider_moved_callback;
+    
+    slider->box.w = width;
+    slider->box.h = height;
+    
+    // Apply offsets later
+    slider->box.x = 0;
+    slider->box.y = 0;
+   
+    
+    // Add some color
+    SDL_Color color_pane = {120,50,10};
+    SDL_Color color_normal = {255,220,100};
+    SDL_Color color_hover = {255,240,100};
+   
+
+    // Create pane
+    slider->pane_box.w = width;
+    slider->pane_box.h = 4;
+    slider->pane_box.x = 0;
+    slider->pane_box.y = 0;
+    slider->slider_pane  = __kb_surface_fill_color(&slider->pane_box, &color_pane);
+    slider->pane_box.x = xpos;
+    slider->pane_box.y = ypos+(slider->box.h/4);
+    
+    // Create Knob
+    slider->knob_box.w = 10;
+    slider->knob_box.h = height;
+    slider->knob_box.x = 0;
+    slider->knob_box.y = 0;
+    slider->slider_knob_norm  = __kb_surface_fill_color(&slider->knob_box, &color_normal);
+    slider->slider_knob_hover = __kb_surface_fill_color(&slider->knob_box, &color_hover);
+    
+    slider->knob_box.x = xpos+(slider->box.w * initial_value/100.f)-(slider->knob_box.w/2);
+    slider->knob_box.y = ypos-(slider->box.h/4);
+    
+    // apply offset
+    slider->box.x = xpos;
+    slider->box.y = ypos;
+    
+    slider->state = 0;
+    slider->id = ++CONTROL_ID;
+    
+    
+    kb_controls_add_control(list, KB_SLIDER, slider);
+
+    return slider;
 }
 
-void kb_process_mouse_motion(kb_controls* list, int x, int y)
-{    
-    if(!list) { return; } 
-
-	kb_controls_node* ptr = list->root;
-		
-	while(ptr != 0) {
-        if(ptr->data != 0) {
-            if(ptr->type == KB_BUTTON) {
-                kb_button* btn = (kb_button*)ptr->data;
-                btn->state = __kb_mouse_over(x, y, &btn->box); 
-            }
-        }
-        ptr = ptr->next;
-	}
-}
-
-void kb_process_input(kb_controls* list, uint8_t button, int x, int y)
-{    
-    if(!list) { return; } 
-
-    kb_controls_node* ptr = list->root;	
-	while(ptr != 0) {
-        if(ptr->data != 0) {
-            if(ptr->type == KB_BUTTON) {
-                kb_button* btn = (kb_button*)ptr->data;
-                if(__kb_mouse_over(x, y, &btn->box) > 0) {
-                    btn->callback(0);
-                }
-            }
-        }
-		
-        ptr = ptr->next;
-	}
-}
- 
-void kb_controls_render(kb_controls* list, SDL_Surface* screen) 
+void kb_slider_destroy(kb_controls* list, kb_slider* slider)
 {
-	if(!list) { return; } 
-
-	kb_controls_node* ptr = list->root;
-	while(ptr != 0) {
-        if(ptr->data != 0) {
-            if(ptr->type == KB_BUTTON) {
-                kb_button* btn = (kb_button*)ptr->data;
-                SDL_BlitSurface(btn->state > 0 ?  btn->btn_hover : btn->btn_norm, NULL, screen, &btn->box);
-            }
-        }
-		
-        ptr = ptr->next;
-	}
+	__kb_unregister_control(list, slider);
+	SDL_FreeSurface(slider->slider_knob_norm);
+	SDL_FreeSurface(slider->slider_knob_hover);
+	SDL_FreeSurface(slider->slider_pane);
+	
+	free(slider);
+	slider = 0;
 }

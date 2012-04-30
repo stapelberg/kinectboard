@@ -50,7 +50,7 @@ void kb_controls_add_control(kb_controls* list, kb_type type, void* ptr);
 
 // Input processing
 void kb_process_input(kb_controls* list, uint8_t button, int x, int y);
-void kb_process_mouse_motion(kb_controls* list, int x, int y);
+void kb_process_mouse_motion(kb_controls* list, uint8_t button, int x, int y, int x_rel, int y_rel);
 
 /* ******************************************************************* */
 /* Button */
@@ -74,5 +74,30 @@ kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, 
 
 // Destroy Button
 void kb_button_destroy(kb_controls* list, kb_button* btn);
+
+/* ******************************************************************* */
+/* Slider */
+typedef void (*kb_slider_cb)(float slider_val);
+ 
+#pragma pack(push)
+typedef struct
+{
+	uint32_t id;
+	SDL_Surface* slider_knob_norm;
+	SDL_Surface* slider_knob_hover;
+	SDL_Surface* slider_pane;
+	SDL_Rect box;
+	SDL_Rect pane_box;
+	SDL_Rect knob_box;
+	kb_slider_cb callback;
+	uint8_t state;
+} kb_slider;
+#pragma pack(pop)
+
+// Create Slider
+kb_slider* kb_slider_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_slider_cb slider_moved_callback, float initial_value);
+
+// Destroy Slider
+void kb_slider_destroy(kb_controls* list, kb_slider* slider);
 
 #endif

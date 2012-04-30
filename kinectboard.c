@@ -261,12 +261,18 @@ void btn_test_funct(void* placeholder) {
     fflush(stdout);
 }
 
+// Callback for slider
+void slider_test_funct(float slider_val) {
+    printf("Slider at %f percent.\n", slider_val*100.f);
+    fflush(stdout);
+}
+
 void kb_poll_events(kb_controls* list) {
     SDL_Event event;
     while ( SDL_PollEvent(&event) ) {
         switch (event.type) {
             case SDL_MOUSEMOTION:
-                kb_process_mouse_motion(list, event.motion.x, event.motion.y); 
+                kb_process_mouse_motion(list, event.button.button, event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel); 
                 break;
             case SDL_MOUSEBUTTONDOWN:
                 kb_process_input(list, event.button.button, event.button.x, event.button.y);
@@ -397,13 +403,11 @@ int main(int argc, char *argv[]) {
     
     // Some Buttons
     kb_button* btn = kb_button_create(list,100,25,10,10, &btn_test_funct);
-    kb_controls_add_control(list, KB_BUTTON, btn);
-    
     kb_button* btn1 = kb_button_create(list,100,25,120,10, &btn_test_funct);
-    kb_controls_add_control(list, KB_BUTTON, btn1);
+    kb_button* btn2 = kb_button_create(list,100,25,230,10, &btn_test_funct);    
     
-    kb_button* btn2 = kb_button_create(list,100,25,230,10, &btn_test_funct);
-    kb_controls_add_control(list, KB_BUTTON, btn2);
+    // A slider
+    kb_slider* slider = kb_slider_create(list, 300,25,10,400,&slider_test_funct, 50.f);
     
     while (1) {
         pthread_mutex_lock(&gl_backbuf_mutex);
@@ -468,5 +472,7 @@ int main(int argc, char *argv[]) {
     kb_button_destroy(list, btn);
     kb_button_destroy(list, btn1);
     kb_button_destroy(list, btn2);
+    kb_slider_destroy(list, slider);
+    
     kb_controls_destroy(list);
 }
