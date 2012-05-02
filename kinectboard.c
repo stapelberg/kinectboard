@@ -98,6 +98,9 @@ struct range {
 struct range empty_canvas[640 * 480];
 struct range empty_canvas_copy[640 * 480];
 
+int animation_step = 0;
+int ANIMATION_ONE_STEP = 30;
+
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
     pthread_mutex_lock(&gl_backbuf_mutex);
@@ -264,6 +267,7 @@ void btn_test_funct(void* placeholder) {
 // Callback for slider
 void slider_test_funct(float slider_val) {
     printf("Slider at %f percent.\n", slider_val*100.f);
+    ANIMATION_ONE_STEP = (slider_val * 64);
     fflush(stdout);
 }
 
@@ -281,6 +285,10 @@ void kb_poll_events(kb_controls* list) {
                 if(event.key.keysym.sym == SDLK_ESCAPE) {
                     exit(0);	
                 }
+                if (event.key.keysym.sym == SDLK_RIGHT) {
+                    animation_step = 640;
+                }
+                break;
             break;
 	    case SDL_QUIT:
             exit(0);	
@@ -454,6 +462,17 @@ int main(int argc, char *argv[]) {
         //memcpy(kinect_rgb->pixels, rgb_front, 640 * 480 * 3);
         memcpy(kinect_rgb->pixels, depth_mid, 640 * 480 * 3);
         SDL_BlitSurface(kinect_rgb, NULL, screen, &targetarea_depth);
+
+    targetarea_raw_depth.x = 640 + animation_step;
+    targetarea_raw_depth.y = 0;
+    targetarea_raw_depth.w = kinect_rgb->w;
+    targetarea_raw_depth.h = kinect_rgb->h;
+
+    if (animation_step)
+        animation_step -= ANIMATION_ONE_STEP;
+    if (animation_step < 0)
+        animation_step = 0;
+
 
         memcpy(kinect_rgb_unfiltered->pixels, raw_depth_mid, 640 * 480 * 3);
         SDL_BlitSurface(kinect_rgb_unfiltered, NULL, screen, &targetarea_raw_depth);
