@@ -120,11 +120,27 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
     freenect_set_video_buffer(dev, rgb_back);
     rgb_mid = (uint8_t*)rgb;
 
-    int i;
-    for (i = 0; i < 640 * 480; i++) {
-        int r = rgb_mid[3 * i + 0];
-        int g = rgb_mid[3 * i + 1];
-        int b = rgb_mid[3 * i + 2];
+    /* Wenn es eine Referenzefarbe gibt, filtern wir das Farbbild. */
+    if (reference_r != -1) {
+        int i;
+        for (i = 0; i < 640 * 480; i++) {
+            double r = rgb_mid[3 * i + 0];
+            double g = rgb_mid[3 * i + 1];
+            double b = rgb_mid[3 * i + 2];
+
+            double nom = sqrt((r * r) + (g * g) + (b * b));
+            r /= nom;
+            g /= nom;
+            b /= nom;
+
+            /* depth_mid ist das Tiefenbild. */
+            double distance = sqrt(pow((reference_r - r), 2) + pow((reference_g - g), 2) + pow((reference_b - b), 2));
+            if (distance > 0.2) {
+                rgb_mid[3 * i + 0] = 0;
+                rgb_mid[3 * i + 1] = 0;
+                rgb_mid[3 * i + 2] = 0;
+            }
+        }
     }
 
     got_rgb++;
