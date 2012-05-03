@@ -100,6 +100,9 @@ struct range empty_canvas_copy[640 * 480];
 
 int animation_step = 0;
 int ANIMATION_ONE_STEP = 30;
+// Idealerweise auf 13, sobald wir CUDA haben.
+int MEDIAN_FILTER_SIZE = 9;
+pthread_mutex_t median_filter_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
@@ -130,78 +133,55 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
     int i, col, row;
     uint16_t *depth = (uint16_t*)v_depth;
     pthread_mutex_lock(&gl_backbuf_mutex);
+
+    pthread_mutex_lock(&median_filter_mutex);
+    int nneighbors[MEDIAN_FILTER_SIZE * MEDIAN_FILTER_SIZE];
+
     for (row = 0; row < (480); row++) {
         for (col = 0; col < 640; col++) {
             i = row * 640 + col;
             raw_depth_mid[3*i+0] = depthPixelsLookupNearWhite[depth[i]];
             raw_depth_mid[3*i+1] = depthPixelsLookupNearWhite[depth[i]];
             raw_depth_mid[3*i+2] = depthPixelsLookupNearWhite[depth[i]];
-            if (col < 10 || col > (640-10) || row < 10 || row < (480-10)) {
-                depth_mid[3 * i + 0] = depthPixelsLookupNearWhite[depth[i]];
-                depth_mid[3 * i + 1] = depthPixelsLookupNearWhite[depth[i]];
-                depth_mid[3 * i + 2] = depthPixelsLookupNearWhite[depth[i]];
+            if (col < MEDIAN_FILTER_SIZE || col > (640 - MEDIAN_FILTER_SIZE)) {
+                depth_mid[3 * i + 0] = 255;
+                depth_mid[3 * i + 1] = 0;
+                depth_mid[3 * i + 2] = 0;
+                continue;
+            }
+            if (row < MEDIAN_FILTER_SIZE || row > (480-MEDIAN_FILTER_SIZE)) {
+                //depth_mid[3 * i + 0] = depthPixelsLookupNearWhite[depth[i]];
+                //depth_mid[3 * i + 1] = depthPixelsLookupNearWhite[depth[i]];
+                //depth_mid[3 * i + 2] = depthPixelsLookupNearWhite[depth[i]];
+                depth_mid[3 * i + 0] = 0;
+                depth_mid[3 * i + 1] = 0;
+                depth_mid[3 * i + 2] = 255;
                 continue;
             }
 
-#if 0
-            /* 3x3 */
-        int neighbors[] = {
-            /* links */
-            depth[row_col_to_px(row-1, col-1)],
-            depth[row_col_to_px(row, col-1)],
-            depth[row_col_to_px(row+1, col-1)],
-            /* mitte */
-            depth[row_col_to_px(row-1, col)],
-            depth[row_col_to_px(row, col)],
-            depth[row_col_to_px(row+1, col)],
-            /* rechts */
-            depth[row_col_to_px(row-1, col+1)],
-            depth[row_col_to_px(row, col+1)],
-            depth[row_col_to_px(row+1, col+1)],
-        };
-#endif
+            int ic, ir;
+            int ni = 0;
+            for (ic = (col - (MEDIAN_FILTER_SIZE / 2));
+                 ic <= (col + (MEDIAN_FILTER_SIZE / 2));
+                 ic++) {
+                for (ir = (row - (MEDIAN_FILTER_SIZE / 2));
+                     ir <= (row + (MEDIAN_FILTER_SIZE / 2));
+                     ir++) {
+                    nneighbors[ni++] = depth[row_col_to_px(ir, ic)];
+                }
 
-            /* 5x5 */
-        int neighbors[] = {
-            depth[row_col_to_px(row-2, col-2)],
-            depth[row_col_to_px(row-1, col-2)],
-            depth[row_col_to_px(row, col-2)],
-            depth[row_col_to_px(row+1, col-2)],
-            depth[row_col_to_px(row+2, col-2)],
-            /* links */
-            depth[row_col_to_px(row-2, col-1)],
-            depth[row_col_to_px(row-1, col-1)],
-            depth[row_col_to_px(row, col-1)],
-            depth[row_col_to_px(row+1, col-1)],
-            depth[row_col_to_px(row+2, col-1)],
-            /* mitte */
-            depth[row_col_to_px(row-2, col)],
-            depth[row_col_to_px(row-1, col)],
-            depth[row_col_to_px(row, col)],
-            depth[row_col_to_px(row+1, col)],
-            depth[row_col_to_px(row+2, col)],
-            /* rechts */
-            depth[row_col_to_px(row-2, col+1)],
-            depth[row_col_to_px(row-1, col+1)],
-            depth[row_col_to_px(row, col+1)],
-            depth[row_col_to_px(row+1, col+1)],
-            depth[row_col_to_px(row+2, col+1)],
+            }
 
-            depth[row_col_to_px(row-2, col+2)],
-            depth[row_col_to_px(row-1, col+2)],
-            depth[row_col_to_px(row, col+2)],
-            depth[row_col_to_px(row+1, col+2)],
-            depth[row_col_to_px(row+2, col+2)],
-        };
-
-        int pval = quick_select(neighbors, sizeof(neighbors) / sizeof(int));
-
-        pval = depthPixelsLookupNearWhite[pval];
-        depth_mid[3 * i + 0] = pval;
-        depth_mid[3 * i + 1] = pval;
-        depth_mid[3 * i + 2] = pval;
+            int pvaln = quick_select(nneighbors, ni);
+            pvaln = depthPixelsLookupNearWhite[pvaln];
+            depth_mid[3 * i + 0] = pvaln;
+            depth_mid[3 * i + 1] = pvaln;
+            depth_mid[3 * i + 2] = pvaln;
         }
     }
+
+    pthread_mutex_unlock(&median_filter_mutex);
+
     got_depth++;
     pthread_cond_signal(&gl_frame_cond);
     pthread_mutex_unlock(&gl_backbuf_mutex);
@@ -267,7 +247,11 @@ void btn_test_funct(void* placeholder) {
 // Callback for slider
 void slider_test_funct(float slider_val) {
     printf("Slider at %f percent.\n", slider_val*100.f);
-    ANIMATION_ONE_STEP = (slider_val * 64);
+    pthread_mutex_lock(&median_filter_mutex);
+    MEDIAN_FILTER_SIZE = slider_val * 100.f;
+    if ((MEDIAN_FILTER_SIZE % 2) == 0)
+        MEDIAN_FILTER_SIZE += 1;
+    pthread_mutex_unlock(&median_filter_mutex);
     fflush(stdout);
 }
 
@@ -404,7 +388,6 @@ int main(int argc, char *argv[]) {
     SDL_Color backgroundColor = { 0, 0, 255 };
 
 //    SDL_Surface* textSurface = TTF_RenderText_Shaded(font, "This is my text.", foregroundColor, backgroundColor);
-    SDL_Surface* textSurface = TTF_RenderText_Solid(font, "This is my text.", foregroundColor);
     SDL_Rect textLocation = { 10, 10, 0, 0 };
 
     kb_controls* list = kb_controls_create();
@@ -415,8 +398,10 @@ int main(int argc, char *argv[]) {
     kb_button* btn2 = kb_button_create(list,100,25,230,10, &btn_test_funct);    
     
     // A slider
-    kb_slider* slider = kb_slider_create(list, 300,25,10,400,&slider_test_funct, 50.f);
+    kb_slider* slider = kb_slider_create(list, 300,25,10,400,&slider_test_funct, 5.f);
     
+    char mediantextbuffer[256];
+
     while (1) {
         pthread_mutex_lock(&gl_backbuf_mutex);
 
@@ -481,6 +466,8 @@ int main(int argc, char *argv[]) {
         
         kb_controls_render(list, screen);
 
+        snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Median: %d pixel", MEDIAN_FILTER_SIZE);
+        SDL_Surface* textSurface = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
         SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
         
     
