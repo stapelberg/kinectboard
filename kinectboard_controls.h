@@ -79,9 +79,13 @@ typedef struct
 typedef struct
 {
 	uint32_t id;
+	SDL_Color color;
 	SDL_Rect textLocation;
 	SDL_Surface* text;
+	TTF_Font* font;
 } kb_label;
+
+void kb_label_changeText(kb_label* label, const char* newText);
 
 #pragma pack(pop)
 

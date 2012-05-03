@@ -273,12 +273,18 @@ kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, 
 kb_label* kb_label_create(kb_controls* list, int xpos, int ypos, const char* labelText, TTF_Font* font) {
 	kb_label* label = (kb_label*)malloc(sizeof(kb_label));
 	label->textLocation = (SDL_Rect){ xpos, ypos, 0, 0 };
-	SDL_Color foregroundColor = { 255, 255, 255};
-	label->text = TTF_RenderText_Solid(font, labelText, foregroundColor);
+	label->color = (SDL_Color){255,255,255};
+	label->text = TTF_RenderText_Solid(font, labelText, label->color);
 	label->id = ++CONTROL_ID;
+	label->font = font;
 	kb_controls_add_control(list, KB_LABEL, label);
 
 	return label;
+}
+
+void kb_label_changeText(kb_label* label, const char* newText) {
+	SDL_FreeSurface(label->text);
+	label->text = TTF_RenderText_Solid(label->font, newText, label->color);
 }
 
 void kb_button_destroy(kb_controls* list, kb_button* btn) 
