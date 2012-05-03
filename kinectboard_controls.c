@@ -136,13 +136,20 @@ void kb_process_mouse_motion(kb_controls* list, uint8_t button, int x, int y, in
             }
 	    if(ptr->type == KB_SLIDER) {
                 kb_slider* slider = (kb_slider*)ptr->data;
-		slider->state = __kb_mouse_over(x, y, &slider->knob_box);
 		if(button == 1) {
-		    if(slider->state > 0 && __kb_mouse_over(x, y, &slider->box)) {
-			// Maybe needs some adjustments to make it more "grabable"
-			slider->knob_box.x += x_rel;
-			slider->callback(((0.f + (x - slider->box.x + (slider->knob_box.w / 2))) / slider->box.w*1.f));
+		    int min_x = slider->box.x - slider->knob_box.w/2;
+		    int max_x = slider->box.x+slider->box.w -slider->knob_box.w/2;
+		    
+		    if(slider->state > 0 && x > 0) {
+			if(__kb_mouse_over(x, y, &slider->box)) {
+			    slider->state = 2;
+			}
+			slider->knob_box.x = x < min_x ? min_x : (x > max_x ? max_x : x-(slider->knob_box.w/2));
+			float perc = (0.f+slider->knob_box.x-slider->box.x+(slider->knob_box.w/2)) / (0.f+slider->box.w);
+			slider->callback(perc < 0.f ? 0.f : (perc > 100.f ? 100.f : perc));
 		    }
+		} else {
+		    slider->state = __kb_mouse_over(x, y, &slider->knob_box); 
 		}
             }
         }
@@ -171,7 +178,8 @@ bool kb_process_input(kb_controls* list, uint8_t button, int x, int y)
 		kb_slider* slider = (kb_slider*)ptr->data;
                 if(__kb_mouse_over(x, y, &slider->box) > 0) {
 		    slider->knob_box.x = x - (slider->knob_box.w / 2);
-                    slider->callback(((0.f + (x - slider->box.x + (slider->knob_box.w / 2))) / slider->box.w*1.f));
+		    float perc = (0.f+slider->knob_box.x-slider->box.x+(slider->knob_box.w/2)) / (0.f+slider->box.w);
+		    slider->callback(perc < 0.f ? 0.f : (perc > 100.f ? 100.f : perc));
 		    return true;
 		}
 	    } 
@@ -273,7 +281,7 @@ kb_slider* kb_slider_create(kb_controls* list, int width, int height, int xpos, 
     
     // Add some color
     SDL_Color color_pane = {120,50,10};
-    SDL_Color color_normal = {255,220,100};
+    SDL_Color color_normal = {255,20,100};
     SDL_Color color_hover = {255,240,100};
    
 
