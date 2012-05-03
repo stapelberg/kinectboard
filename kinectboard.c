@@ -433,6 +433,7 @@ int main(int argc, char *argv[]) {
 
     //create Font
     TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeMono.ttf", 32);
+    TTF_Font *slider_label_font = TTF_OpenFont("/usr/share/fonts/truetype/ttf-bitstream-vera/Vera.ttf", 14);
     if (!font) {
         printf("font not found\n");
         return 1;
@@ -447,9 +448,14 @@ int main(int argc, char *argv[]) {
     kb_button* btn2 = kb_button_create(list,100,25,230,10, &btn_test_funct, "lol2", font);
     
     // A slider
-    kb_slider *slider = kb_slider_create(list, 300, 25, 10, 500, &slider_test_funct, 5.f);
-    kb_slider* distance_slider = kb_slider_create(list, 300,25,10,200, &modify_distance, .2f);
-    kb_slider* depth_multiplier = kb_slider_create(list, 300,25,10,300, &modify_depth_mask_multiplier, .2f);
+    kb_label *median_slider_label = kb_label_create(list, 5, 500, "Median pixels:", slider_label_font);
+    kb_slider *median_slider = kb_slider_create(list, 300, 25, 175, 500, &slider_test_funct, 5.f);
+
+    kb_label *distance_slider_label = kb_label_create(list, 5, 540, "Distance threshold:", slider_label_font);
+    kb_slider *distance_slider = kb_slider_create(list, 300,25,175,540, &modify_distance, .2f);
+
+    kb_label *depth_slider_label = kb_label_create(list, 5, 580, "Depth multiplier:", slider_label_font);
+    kb_slider *depth_multiplier = kb_slider_create(list, 300,25,175,580, &modify_depth_mask_multiplier, .2f);
     
     char mediantextbuffer[256];
 
@@ -516,6 +522,8 @@ int main(int argc, char *argv[]) {
 
         kb_images_render(screen);
 
+        //kb_label* median_px_label = kb_label_create(list, , 10, "blaaaaaaa", font);
+#if 0
         snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Median: %d pixel", MEDIAN_FILTER_SIZE);
         SDL_Surface* textSurface = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
         SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
@@ -528,16 +536,9 @@ int main(int argc, char *argv[]) {
         SDL_Surface* textSurface3 = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
         SDL_BlitSurface(textSurface3, NULL, screen, &textLocation3);
 
+#endif
 
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
     }
-    
-    kb_button_destroy(list, btn);
-    kb_button_destroy(list, btn1);
-    kb_label_destroy(list, label);
-    kb_button_destroy(list, btn2);
-    kb_slider_destroy(list, slider);
-    
-    kb_controls_destroy(list);
 }
