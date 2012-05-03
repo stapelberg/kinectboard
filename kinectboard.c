@@ -472,7 +472,7 @@ int main(int argc, char *argv[]) {
         pthread_mutex_unlock(&gl_backbuf_mutex);
 
         //memcpy(kinect_rgb->pixels, rgb_front, 640 * 480 * 3);
-        memcpy(kinect_rgb->pixels, depth_mid, 640 * 480 * 3);
+        memcpy(kinect_rgb->pixels, depth_front, 640 * 480 * 3);
         SDL_BlitSurface(kinect_rgb, NULL, screen, &targetarea_depth);
 
     targetarea_raw_depth.x = 640 + animation_step;
@@ -486,7 +486,7 @@ int main(int argc, char *argv[]) {
         animation_step = 0;
 
 
-        memcpy(kinect_rgb_unfiltered->pixels, rgb_mid, 640 * 480 * 3);
+        memcpy(kinect_rgb_unfiltered->pixels, rgb_front, 640 * 480 * 3);
         //memcpy(kinect_rgb_unfiltered->pixels, raw_depth_mid, 640 * 480 * 3);
         SDL_BlitSurface(kinect_rgb_unfiltered, NULL, screen, &targetarea_raw_depth);
 
