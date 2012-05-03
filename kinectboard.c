@@ -104,6 +104,12 @@ int ANIMATION_ONE_STEP = 30;
 int MEDIAN_FILTER_SIZE = 9;
 pthread_mutex_t median_filter_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// Die Referenz-Farbe (vom Nutzer ausgewählt). Wird normiert gespeichert:
+// Jeder Farbanteil wird durch √(r² + g² + b²) geteilt.
+double reference_r = -1;
+double reference_g = -1;
+double reference_b = -1;
+
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
     pthread_mutex_lock(&gl_backbuf_mutex);
@@ -263,7 +269,28 @@ void kb_poll_events(kb_controls* list) {
                 kb_process_mouse_motion(list, event.button.button, event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel); 
                 break;
             case SDL_MOUSEBUTTONDOWN:
-                kb_process_input(list, event.button.button, event.button.x, event.button.y);
+                if (!kb_process_input(list, event.button.button, event.button.x, event.button.y)) {
+                    /* Der Klick ging nicht auf irgendein Control. Wir prüfen,
+                     * ob er im Bereich des Farbbilds ist und lesen dann die
+                     * entsprechende Farbe aus. */
+                    // TODO: eher einen callback nutzen
+                    if (event.button.x > 640) {
+                        int pixelidx = event.button.y * 640 + (event.button.x - 640);
+                        printf("clicked on x = %d, y = %d, this is pixelidx %d\n",
+                                event.button.x, event.button.y, pixelidx);
+                        double r = rgb_mid[3 * pixelidx + 0];
+                        double g = rgb_mid[3 * pixelidx + 1];
+                        double b = rgb_mid[3 * pixelidx + 2];
+                        double nominator = sqrt((r * r) + (g * g) + (b * b));
+                        printf("nominator = %f\n", nominator);
+                        reference_r = r / nominator;
+                        reference_g = g / nominator;
+                        reference_b = b / nominator;
+                        printf("r = %f, g = %f, b = %f\n", r, g, b);
+                        printf("reference: r = %f, g = %f, b = %f\n",
+                                reference_r, reference_g, reference_b);
+                    }
+                }
             break;
             case SDL_KEYDOWN:
                 if(event.key.keysym.sym == SDLK_ESCAPE) {
@@ -459,7 +486,8 @@ int main(int argc, char *argv[]) {
         animation_step = 0;
 
 
-        memcpy(kinect_rgb_unfiltered->pixels, raw_depth_mid, 640 * 480 * 3);
+        memcpy(kinect_rgb_unfiltered->pixels, rgb_mid, 640 * 480 * 3);
+        //memcpy(kinect_rgb_unfiltered->pixels, raw_depth_mid, 640 * 480 * 3);
         SDL_BlitSurface(kinect_rgb_unfiltered, NULL, screen, &targetarea_raw_depth);
 
         kb_poll_events(list);
