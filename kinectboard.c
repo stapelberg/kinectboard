@@ -48,8 +48,10 @@
 
 #include "kinectboard_controls.h"
 
+// two kinect images (full resolution) next to each other
 #define SCREEN_WIDTH (640 * 2)
-#define SCREEN_HEIGHT 480
+// kinect image height (480) + space for controls
+#define SCREEN_HEIGHT 480 + 200
 #define SCREEN_DEPTH 32
 
 pthread_t freenect_thread;
@@ -412,6 +414,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the screen / window */
     screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_DEPTH, SDL_SWSURFACE);
+    SDL_WM_SetCaption("kinectboard", "");
     Uint32 rmask, gmask, bmask, amask;
 
     /* SDL interprets each pixel as a 32-bit number, so our masks must depend
@@ -428,23 +431,8 @@ int main(int argc, char *argv[]) {
     amask = 0;
 #endif
 
-    SDL_Surface *kinect_rgb = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 480, 24, rmask, gmask, bmask, amask);
-    SDL_Surface *kinect_rgb_unfiltered = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 480, 24, rmask, gmask, bmask, amask);
-
-    SDL_Rect targetarea_depth;
-    SDL_Rect targetarea_raw_depth;
-    targetarea_depth.x = 0;
-    targetarea_depth.y = 0;
-    targetarea_depth.w = kinect_rgb->w;
-    targetarea_depth.h = kinect_rgb->h;
-
-    targetarea_raw_depth.x = 640;
-    targetarea_raw_depth.y = 0;
-    targetarea_raw_depth.w = kinect_rgb->w;
-    targetarea_raw_depth.h = kinect_rgb->h;
-
     //create Font
-    TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeMono.ttf", 40);
+    TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeMono.ttf", 32);
     if (!font) {
         printf("font not found\n");
         return 1;
@@ -453,7 +441,6 @@ int main(int argc, char *argv[]) {
     SDL_Color foregroundColor = { 255, 255, 255 };
     SDL_Color backgroundColor = { 0, 0, 255 };
 
-//    SDL_Surface* textSurface = TTF_RenderText_Shaded(font, "This is my text.", foregroundColor, backgroundColor);
     SDL_Rect textLocation = { 10, 10, 0, 0 };
     SDL_Rect textLocation2 = { 10, 40, 0, 0 };
     SDL_Rect textLocation3 = { 10, 60, 0, 0 };
@@ -466,11 +453,14 @@ int main(int argc, char *argv[]) {
     kb_button* btn2 = kb_button_create(list,100,25,230,10, &btn_test_funct);    
     
     // A slider
-    kb_slider* slider = kb_slider_create(list, 300,25,10,400,&slider_test_funct, 5.f);
+    kb_slider *slider = kb_slider_create(list, 300, 25, 10, 500, &slider_test_funct, 5.f);
     kb_slider* distance_slider = kb_slider_create(list, 300,25,10,200, &modify_distance, .2f);
     kb_slider* depth_multiplier = kb_slider_create(list, 300,25,10,300, &modify_depth_mask_multiplier, .2f);
     
     char mediantextbuffer[256];
+
+    kb_image_create("Median-filtered depth image", &depth_front);
+    kb_image_create("Raw kinect RGB image", &rgb_front);
 
     while (1) {
         pthread_mutex_lock(&gl_backbuf_mutex);
@@ -514,10 +504,7 @@ int main(int argc, char *argv[]) {
 
         pthread_mutex_unlock(&gl_backbuf_mutex);
 
-        //memcpy(kinect_rgb->pixels, rgb_front, 640 * 480 * 3);
-        memcpy(kinect_rgb->pixels, depth_front, 640 * 480 * 3);
-        SDL_BlitSurface(kinect_rgb, NULL, screen, &targetarea_depth);
-
+#if 0
     targetarea_raw_depth.x = 640 + animation_step;
     targetarea_raw_depth.y = 0;
     targetarea_raw_depth.w = kinect_rgb->w;
@@ -527,15 +514,13 @@ int main(int argc, char *argv[]) {
         animation_step -= ANIMATION_ONE_STEP;
     if (animation_step < 0)
         animation_step = 0;
-
-
-        memcpy(kinect_rgb_unfiltered->pixels, rgb_front, 640 * 480 * 3);
-        //memcpy(kinect_rgb_unfiltered->pixels, raw_depth_mid, 640 * 480 * 3);
-        SDL_BlitSurface(kinect_rgb_unfiltered, NULL, screen, &targetarea_raw_depth);
+#endif
 
         kb_poll_events(list);
         
         kb_controls_render(list, screen);
+
+        kb_images_render(screen);
 
         snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Median: %d pixel", MEDIAN_FILTER_SIZE);
         SDL_Surface* textSurface = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);

@@ -14,7 +14,7 @@ if (WIN32)
   include_directories(${THREADS_PTHREADS_INCLUDE_DIR})
 endif()
 
-add_executable(kinectboard kinectboard.c kinectboard_controls.c)
+add_executable(kinectboard kinectboard.c kinectboard_controls.c kinectboard_images.c)
 
 # Mac just has everything already
 if(APPLE)
