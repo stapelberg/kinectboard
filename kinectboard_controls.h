@@ -8,6 +8,7 @@
  
  #include <sys/types.h>
  #include <SDL/SDL.h>
+ #include <SDL/SDL_ttf.h>
  #include <stdbool.h>
  
 /* ******************************************************************* */
@@ -21,7 +22,8 @@ SDL_Surface* kb_surface_fill_color(SDL_Rect* box, SDL_Color* color);
 typedef enum
 {
 	KB_BUTTON = 0,
-	KB_SLIDER
+	KB_SLIDER,
+	KB_LABEL
 } kb_type;
 
 #pragma pack(push)
@@ -69,16 +71,30 @@ typedef struct
 	SDL_Surface* btn_hover;
 	//SDL_Surface* btn_pressed;
 	SDL_Rect box;
+	SDL_Surface* text;
 	kb_button_cb callback;
 	uint8_t state;
 } kb_button;
+
+typedef struct
+{
+	uint32_t id;
+	SDL_Rect textLocation;
+	SDL_Surface* text;
+} kb_label;
+
 #pragma pack(pop)
 
 // Create Button
-kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_button_cb button_pressed_callback);
+kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_button_cb button_pressed_callbackconst, const char* buttonText, TTF_Font* font);
+// Create Label
+kb_label* kb_label_create(kb_controls* list, int xpos, int ypos, const char* labelText, TTF_Font* font);
 
 // Destroy Button
 void kb_button_destroy(kb_controls* list, kb_button* btn);
+
+// Destroy Label
+void kb_label_destroy(kb_controls* list, kb_label* label);
 
 /* ******************************************************************* */
 /* Slider */

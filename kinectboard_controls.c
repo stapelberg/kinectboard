@@ -43,6 +43,10 @@ int __compare_btn(kb_button* lhs, kb_button* rhs) {
     return (lhs != 0 && rhs != 0) ? (rhs->id == lhs->id ? 0 : 1) : -1; 
 }
 
+int __compare_label(kb_label* lhs, kb_label* rhs) {
+    return (lhs != 0 && rhs != 0) ? (rhs->id == lhs->id ? 0 : 1) : -1;
+}
+
 int __compare_slider(kb_slider* lhs, kb_slider* rhs) {
     return (lhs != 0 && rhs != 0) ? (rhs->id == lhs->id ? 0 : 1) : -1; 
 }
@@ -61,14 +65,24 @@ void __kb_unregister_control(kb_controls* list, void* control) {
         } 
     }
     
+    if(list->root->type == KB_LABEL) {
+        if(__compare_label((kb_label*)list->root, (kb_label*)control) == 0) {
+            list->root = list->root->next;
+        }
+    }
+
     kb_controls_node* ptr = list->root;	
 	while(ptr != 0) {
-        if(ptr->type == KB_BUTTON && ptr->data != 0 
+        if(ptr->type == KB_BUTTON && ptr->data != 0
 	    && __compare_btn((kb_button*)ptr->data, (kb_button*)control) == 0) {
             ptr->data = ptr->next;
         }
-	 if(ptr->type == KB_SLIDER && ptr->data != 0 
+	    if(ptr->type == KB_SLIDER && ptr->data != 0
 	    && __compare_slider((kb_slider*)ptr->data, (kb_slider*)control) == 0) {
+            ptr->data = ptr->next;
+        }
+        if(ptr->type == KB_LABEL && ptr->data != 0
+	    && __compare_label((kb_label*)ptr->data, (kb_label*)control) == 0) {
             ptr->data = ptr->next;
         }
     }
@@ -200,14 +214,16 @@ void kb_controls_render(kb_controls* list, SDL_Surface* screen)
             if(ptr->type == KB_BUTTON) {
                 kb_button* btn = (kb_button*)ptr->data;
                 SDL_BlitSurface(btn->state > 0 ?  btn->btn_hover : btn->btn_norm, NULL, screen, &btn->box);
-            }
-	    else if(ptr->type == KB_SLIDER) {
+            } else if(ptr->type == KB_SLIDER) {
                 kb_slider* slider = (kb_slider*)ptr->data;	
 		
                 SDL_BlitSurface(slider->slider_pane, NULL, screen, &slider->pane_box);
 		
                 SDL_BlitSurface(slider->state > 0 ?  slider->slider_knob_hover : slider->slider_knob_norm, NULL, screen, &slider->knob_box);
-            }
+            } else if (ptr->type == KB_LABEL) {
+				kb_label* label = (kb_label*)ptr->data;
+                SDL_BlitSurface(label->text, NULL, screen, &label->textLocation);
+			}
         }
 		
         ptr = ptr->next;
@@ -216,7 +232,7 @@ void kb_controls_render(kb_controls* list, SDL_Surface* screen)
 
 /* ******************************************************************* */
 /* KB Button */
-kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_button_cb button_pressed_callback)
+kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_button_cb button_pressed_callback, const char* buttonText, TTF_Font* font)
 {
     kb_button* btn = (kb_button*)malloc(sizeof(kb_button));
     
@@ -244,8 +260,25 @@ kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, 
     btn->id = ++CONTROL_ID;
     
     kb_controls_add_control(list, KB_BUTTON, btn);
+    SDL_Color foregroundColor = { 0, 0, 0};
+    btn->text = TTF_RenderText_Solid(font, buttonText, foregroundColor);
+    //TextLocation muss noch angepasst werden.
+    SDL_Rect textLocation = { 0, 0, 0, 0 };
+    SDL_BlitSurface(btn->text, NULL, btn->btn_norm, &textLocation);
+    SDL_BlitSurface(btn->text, NULL, btn->btn_hover, &textLocation);
 	
     return btn;
+}
+
+kb_label* kb_label_create(kb_controls* list, int xpos, int ypos, const char* labelText, TTF_Font* font) {
+	kb_label* label = (kb_label*)malloc(sizeof(kb_label));
+	label->textLocation = (SDL_Rect){ xpos, ypos, 0, 0 };
+	SDL_Color foregroundColor = { 255, 255, 255};
+	label->text = TTF_RenderText_Solid(font, labelText, foregroundColor);
+	label->id = ++CONTROL_ID;
+	kb_controls_add_control(list, KB_LABEL, label);
+
+	return label;
 }
 
 void kb_button_destroy(kb_controls* list, kb_button* btn) 
@@ -253,9 +286,18 @@ void kb_button_destroy(kb_controls* list, kb_button* btn)
 	__kb_unregister_control(list, btn);
 	SDL_FreeSurface(btn->btn_norm);
 	SDL_FreeSurface(btn->btn_hover);
+	SDL_FreeSurface(btn->text);
 	
 	free(btn);
 	btn = 0;
+}
+
+void kb_label_destroy(kb_controls* list, kb_label* label)
+{
+	__kb_unregister_control(list, label);
+	SDL_FreeSurface(label->text);
+	free(label);
+	label = 0;
 }
 /* ******************************************************************* */
 /* KB Slider */

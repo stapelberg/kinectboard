@@ -437,20 +437,14 @@ int main(int argc, char *argv[]) {
         printf("font not found\n");
         return 1;
     }
-    //Text colors
-    SDL_Color foregroundColor = { 255, 255, 255 };
-    SDL_Color backgroundColor = { 0, 0, 255 };
-
-    SDL_Rect textLocation = { 10, 10, 0, 0 };
-    SDL_Rect textLocation2 = { 10, 40, 0, 0 };
-    SDL_Rect textLocation3 = { 10, 60, 0, 0 };
 
     kb_controls* list = kb_controls_create();
     
+    kb_label* label = kb_label_create(list, 10, 10, "blaaaaaaa", font);
     // Some Buttons
-    kb_button* btn = kb_button_create(list,100,25,10,10, &btn_test_funct);
-    kb_button* btn1 = kb_button_create(list,100,25,120,10, &btn_test_funct);
-    kb_button* btn2 = kb_button_create(list,100,25,230,10, &btn_test_funct);    
+    kb_button* btn = kb_button_create(list,100,25,10,10, &btn_test_funct, "lol", font);
+    kb_button* btn1 = kb_button_create(list,100,25,120,10, &btn_test_funct, "lol1", font);
+    kb_button* btn2 = kb_button_create(list,100,25,230,10, &btn_test_funct, "lol2", font);
     
     // A slider
     kb_slider *slider = kb_slider_create(list, 300, 25, 10, 500, &slider_test_funct, 5.f);
@@ -541,6 +535,7 @@ int main(int argc, char *argv[]) {
     
     kb_button_destroy(list, btn);
     kb_button_destroy(list, btn1);
+    kb_label_destroy(list, label);
     kb_button_destroy(list, btn2);
     kb_slider_destroy(list, slider);
     
