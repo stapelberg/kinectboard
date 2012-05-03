@@ -100,8 +100,8 @@ struct range empty_canvas_copy[640 * 480];
 
 int animation_step = 0;
 int ANIMATION_ONE_STEP = 30;
-// Idealerweise auf 13, sobald wir CUDA haben.
-int MEDIAN_FILTER_SIZE = 9;
+// Idealerweise auf 13, sobald wir CUDA haben. Bis dahin auf 9.
+int MEDIAN_FILTER_SIZE = 5;
 pthread_mutex_t median_filter_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Die Referenz-Farbe (vom Nutzer ausgewählt). Wird normiert gespeichert:
@@ -109,6 +109,8 @@ pthread_mutex_t median_filter_mutex = PTHREAD_MUTEX_INITIALIZER;
 double reference_r = -1;
 double reference_g = -1;
 double reference_b = -1;
+
+double FILTER_DISTANCE = 0.2f;
 
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
@@ -135,7 +137,7 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 
             /* depth_mid ist das Tiefenbild. */
             double distance = sqrt(pow((reference_r - r), 2) + pow((reference_g - g), 2) + pow((reference_b - b), 2));
-            if (distance > 0.2) {
+            if (distance > FILTER_DISTANCE) {
                 rgb_mid[3 * i + 0] = 0;
                 rgb_mid[3 * i + 1] = 0;
                 rgb_mid[3 * i + 2] = 0;
@@ -273,6 +275,14 @@ void slider_test_funct(float slider_val) {
     MEDIAN_FILTER_SIZE = slider_val * 100.f;
     if ((MEDIAN_FILTER_SIZE % 2) == 0)
         MEDIAN_FILTER_SIZE += 1;
+    pthread_mutex_unlock(&median_filter_mutex);
+    fflush(stdout);
+}
+
+void modify_distance(float slider_val) {
+    printf("Slider at %f percent.\n", slider_val*100.f);
+    pthread_mutex_lock(&median_filter_mutex);
+    FILTER_DISTANCE = slider_val;
     pthread_mutex_unlock(&median_filter_mutex);
     fflush(stdout);
 }
@@ -432,6 +442,7 @@ int main(int argc, char *argv[]) {
 
 //    SDL_Surface* textSurface = TTF_RenderText_Shaded(font, "This is my text.", foregroundColor, backgroundColor);
     SDL_Rect textLocation = { 10, 10, 0, 0 };
+    SDL_Rect textLocation2 = { 10, 40, 0, 0 };
 
     kb_controls* list = kb_controls_create();
     
@@ -442,6 +453,7 @@ int main(int argc, char *argv[]) {
     
     // A slider
     kb_slider* slider = kb_slider_create(list, 300,25,10,400,&slider_test_funct, 5.f);
+    kb_slider* distance_slider = kb_slider_create(list, 300,25,10,200, &modify_distance, .2f);
     
     char mediantextbuffer[256];
 
@@ -514,6 +526,9 @@ int main(int argc, char *argv[]) {
         SDL_Surface* textSurface = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
         SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
         
+        snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Distance: %f", FILTER_DISTANCE);
+        SDL_Surface* textSurface2 = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
+        SDL_BlitSurface(textSurface2, NULL, screen, &textLocation2);
     
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
