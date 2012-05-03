@@ -68,8 +68,10 @@ unsigned char depthPixelsLookupNearWhite[2048];
 // mid: owned by callbacks, "latest frame ready"
 // front: owned by GL, "currently being drawn"
 
-// processed depth (with a median filter)
+// processed depth as an RGB image (with a median filter)
 uint8_t *depth_mid, *depth_front;
+// processed depth as raw values (with a median filter)
+uint8_t *depth_median_filtered;
 // raw depth (as received from kinect)
 uint8_t *raw_depth_mid, *raw_depth_front;
 uint8_t *rgb_back, *rgb_mid, *rgb_front;
@@ -112,6 +114,8 @@ double reference_b = -1;
 
 double FILTER_DISTANCE = 0.2f;
 
+double DEPTH_MASK_MULTIPLIER = 0.0f;
+
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
     pthread_mutex_lock(&gl_backbuf_mutex);
@@ -137,6 +141,10 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 
             /* depth_mid ist das Tiefenbild. */
             double distance = sqrt(pow((reference_r - r), 2) + pow((reference_g - g), 2) + pow((reference_b - b), 2));
+
+            //printf("median_filtered = %d\n", depth_median_filtered[i]);
+            distance += (depth_median_filtered[i] / 255.0) * DEPTH_MASK_MULTIPLIER;
+
             if (distance > FILTER_DISTANCE) {
                 rgb_mid[3 * i + 0] = 0;
                 rgb_mid[3 * i + 1] = 0;
@@ -197,6 +205,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
             }
 
             int pvaln = quick_select(nneighbors, ni);
+            depth_median_filtered[i] = pvaln;
             pvaln = depthPixelsLookupNearWhite[pvaln];
             depth_mid[3 * i + 0] = pvaln;
             depth_mid[3 * i + 1] = pvaln;
@@ -281,11 +290,14 @@ void slider_test_funct(float slider_val) {
 
 void modify_distance(float slider_val) {
     printf("Slider at %f percent.\n", slider_val*100.f);
-    pthread_mutex_lock(&median_filter_mutex);
     FILTER_DISTANCE = slider_val;
-    pthread_mutex_unlock(&median_filter_mutex);
-    fflush(stdout);
 }
+
+void modify_depth_mask_multiplier(float slider_val) {
+    printf("Slider at %f percent.\n", slider_val*100.f);
+    DEPTH_MASK_MULTIPLIER = slider_val;
+}
+
 
 void kb_poll_events(kb_controls* list) {
     SDL_Event event;
@@ -353,6 +365,7 @@ int main(int argc, char *argv[]) {
 
     depth_mid = (uint8_t*)malloc(640*480*3);
     depth_front = (uint8_t*)malloc(640*480*3);
+    depth_median_filtered = (uint8_t*)malloc(640*480);
     raw_depth_mid = (uint8_t*)malloc(640*480*3);
     raw_depth_front = (uint8_t*)malloc(640*480*3);
 
@@ -443,6 +456,7 @@ int main(int argc, char *argv[]) {
 //    SDL_Surface* textSurface = TTF_RenderText_Shaded(font, "This is my text.", foregroundColor, backgroundColor);
     SDL_Rect textLocation = { 10, 10, 0, 0 };
     SDL_Rect textLocation2 = { 10, 40, 0, 0 };
+    SDL_Rect textLocation3 = { 10, 60, 0, 0 };
 
     kb_controls* list = kb_controls_create();
     
@@ -454,6 +468,7 @@ int main(int argc, char *argv[]) {
     // A slider
     kb_slider* slider = kb_slider_create(list, 300,25,10,400,&slider_test_funct, 5.f);
     kb_slider* distance_slider = kb_slider_create(list, 300,25,10,200, &modify_distance, .2f);
+    kb_slider* depth_multiplier = kb_slider_create(list, 300,25,10,300, &modify_depth_mask_multiplier, .2f);
     
     char mediantextbuffer[256];
 
@@ -529,7 +544,12 @@ int main(int argc, char *argv[]) {
         snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Distance: %f", FILTER_DISTANCE);
         SDL_Surface* textSurface2 = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
         SDL_BlitSurface(textSurface2, NULL, screen, &textLocation2);
-    
+
+        snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Depth mask multiplier: %f", DEPTH_MASK_MULTIPLIER);
+        SDL_Surface* textSurface3 = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
+        SDL_BlitSurface(textSurface3, NULL, screen, &textLocation3);
+
+
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
     }
