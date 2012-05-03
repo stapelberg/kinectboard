@@ -68,8 +68,10 @@ unsigned char depthPixelsLookupNearWhite[2048];
 // mid: owned by callbacks, "latest frame ready"
 // front: owned by GL, "currently being drawn"
 
-// processed depth (with a median filter)
+// processed depth as an RGB image (with a median filter)
 uint8_t *depth_mid, *depth_front;
+// processed depth as raw values (with a median filter)
+uint8_t *depth_median_filtered;
 // raw depth (as received from kinect)
 uint8_t *raw_depth_mid, *raw_depth_front;
 uint8_t *rgb_back, *rgb_mid, *rgb_front;
@@ -100,9 +102,19 @@ struct range empty_canvas_copy[640 * 480];
 
 int animation_step = 0;
 int ANIMATION_ONE_STEP = 30;
-// Idealerweise auf 13, sobald wir CUDA haben.
-int MEDIAN_FILTER_SIZE = 9;
+// Idealerweise auf 13, sobald wir CUDA haben. Bis dahin auf 9.
+int MEDIAN_FILTER_SIZE = 5;
 pthread_mutex_t median_filter_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Die Referenz-Farbe (vom Nutzer ausgewählt). Wird normiert gespeichert:
+// Jeder Farbanteil wird durch √(r² + g² + b²) geteilt.
+double reference_r = -1;
+double reference_g = -1;
+double reference_b = -1;
+
+double FILTER_DISTANCE = 0.2f;
+
+double DEPTH_MASK_MULTIPLIER = 0.0f;
 
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
@@ -114,11 +126,31 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
     freenect_set_video_buffer(dev, rgb_back);
     rgb_mid = (uint8_t*)rgb;
 
-    int i;
-    for (i = 0; i < 640 * 480; i++) {
-        int r = rgb_mid[3 * i + 0];
-        int g = rgb_mid[3 * i + 1];
-        int b = rgb_mid[3 * i + 2];
+    /* Wenn es eine Referenzefarbe gibt, filtern wir das Farbbild. */
+    if (reference_r != -1) {
+        int i;
+        for (i = 0; i < 640 * 480; i++) {
+            double r = rgb_mid[3 * i + 0];
+            double g = rgb_mid[3 * i + 1];
+            double b = rgb_mid[3 * i + 2];
+
+            double nom = sqrt((r * r) + (g * g) + (b * b));
+            r /= nom;
+            g /= nom;
+            b /= nom;
+
+            /* depth_mid ist das Tiefenbild. */
+            double distance = sqrt(pow((reference_r - r), 2) + pow((reference_g - g), 2) + pow((reference_b - b), 2));
+
+            //printf("median_filtered = %d\n", depth_median_filtered[i]);
+            distance += (depth_median_filtered[i] / 255.0) * DEPTH_MASK_MULTIPLIER;
+
+            if (distance > FILTER_DISTANCE) {
+                rgb_mid[3 * i + 0] = 0;
+                rgb_mid[3 * i + 1] = 0;
+                rgb_mid[3 * i + 2] = 0;
+            }
+        }
     }
 
     got_rgb++;
@@ -173,6 +205,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
             }
 
             int pvaln = quick_select(nneighbors, ni);
+            depth_median_filtered[i] = pvaln;
             pvaln = depthPixelsLookupNearWhite[pvaln];
             depth_mid[3 * i + 0] = pvaln;
             depth_mid[3 * i + 1] = pvaln;
@@ -255,6 +288,17 @@ void slider_test_funct(float slider_val) {
     fflush(stdout);
 }
 
+void modify_distance(float slider_val) {
+    printf("Slider at %f percent.\n", slider_val*100.f);
+    FILTER_DISTANCE = slider_val;
+}
+
+void modify_depth_mask_multiplier(float slider_val) {
+    printf("Slider at %f percent.\n", slider_val*100.f);
+    DEPTH_MASK_MULTIPLIER = slider_val;
+}
+
+
 void kb_poll_events(kb_controls* list) {
     SDL_Event event;
     while ( SDL_PollEvent(&event) ) {
@@ -263,7 +307,28 @@ void kb_poll_events(kb_controls* list) {
                 kb_process_mouse_motion(list, event.button.button, event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel); 
                 break;
             case SDL_MOUSEBUTTONDOWN:
-                kb_process_input(list, event.button.button, event.button.x, event.button.y);
+                if (!kb_process_input(list, event.button.button, event.button.x, event.button.y)) {
+                    /* Der Klick ging nicht auf irgendein Control. Wir prüfen,
+                     * ob er im Bereich des Farbbilds ist und lesen dann die
+                     * entsprechende Farbe aus. */
+                    // TODO: eher einen callback nutzen
+                    if (event.button.x > 640) {
+                        int pixelidx = event.button.y * 640 + (event.button.x - 640);
+                        printf("clicked on x = %d, y = %d, this is pixelidx %d\n",
+                                event.button.x, event.button.y, pixelidx);
+                        double r = rgb_mid[3 * pixelidx + 0];
+                        double g = rgb_mid[3 * pixelidx + 1];
+                        double b = rgb_mid[3 * pixelidx + 2];
+                        double nominator = sqrt((r * r) + (g * g) + (b * b));
+                        printf("nominator = %f\n", nominator);
+                        reference_r = r / nominator;
+                        reference_g = g / nominator;
+                        reference_b = b / nominator;
+                        printf("r = %f, g = %f, b = %f\n", r, g, b);
+                        printf("reference: r = %f, g = %f, b = %f\n",
+                                reference_r, reference_g, reference_b);
+                    }
+                }
             break;
             case SDL_KEYDOWN:
                 if(event.key.keysym.sym == SDLK_ESCAPE) {
@@ -300,6 +365,7 @@ int main(int argc, char *argv[]) {
 
     depth_mid = (uint8_t*)malloc(640*480*3);
     depth_front = (uint8_t*)malloc(640*480*3);
+    depth_median_filtered = (uint8_t*)malloc(640*480);
     raw_depth_mid = (uint8_t*)malloc(640*480*3);
     raw_depth_front = (uint8_t*)malloc(640*480*3);
 
@@ -389,6 +455,8 @@ int main(int argc, char *argv[]) {
 
 //    SDL_Surface* textSurface = TTF_RenderText_Shaded(font, "This is my text.", foregroundColor, backgroundColor);
     SDL_Rect textLocation = { 10, 10, 0, 0 };
+    SDL_Rect textLocation2 = { 10, 40, 0, 0 };
+    SDL_Rect textLocation3 = { 10, 60, 0, 0 };
 
     kb_controls* list = kb_controls_create();
     
@@ -399,6 +467,8 @@ int main(int argc, char *argv[]) {
     
     // A slider
     kb_slider* slider = kb_slider_create(list, 300,25,10,400,&slider_test_funct, 5.f);
+    kb_slider* distance_slider = kb_slider_create(list, 300,25,10,200, &modify_distance, .2f);
+    kb_slider* depth_multiplier = kb_slider_create(list, 300,25,10,300, &modify_depth_mask_multiplier, .2f);
     
     char mediantextbuffer[256];
 
@@ -445,7 +515,7 @@ int main(int argc, char *argv[]) {
         pthread_mutex_unlock(&gl_backbuf_mutex);
 
         //memcpy(kinect_rgb->pixels, rgb_front, 640 * 480 * 3);
-        memcpy(kinect_rgb->pixels, depth_mid, 640 * 480 * 3);
+        memcpy(kinect_rgb->pixels, depth_front, 640 * 480 * 3);
         SDL_BlitSurface(kinect_rgb, NULL, screen, &targetarea_depth);
 
     targetarea_raw_depth.x = 640 + animation_step;
@@ -459,7 +529,8 @@ int main(int argc, char *argv[]) {
         animation_step = 0;
 
 
-        memcpy(kinect_rgb_unfiltered->pixels, raw_depth_mid, 640 * 480 * 3);
+        memcpy(kinect_rgb_unfiltered->pixels, rgb_front, 640 * 480 * 3);
+        //memcpy(kinect_rgb_unfiltered->pixels, raw_depth_mid, 640 * 480 * 3);
         SDL_BlitSurface(kinect_rgb_unfiltered, NULL, screen, &targetarea_raw_depth);
 
         kb_poll_events(list);
@@ -470,7 +541,15 @@ int main(int argc, char *argv[]) {
         SDL_Surface* textSurface = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
         SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
         
-    
+        snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Distance: %f", FILTER_DISTANCE);
+        SDL_Surface* textSurface2 = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
+        SDL_BlitSurface(textSurface2, NULL, screen, &textLocation2);
+
+        snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Depth mask multiplier: %f", DEPTH_MASK_MULTIPLIER);
+        SDL_Surface* textSurface3 = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
+        SDL_BlitSurface(textSurface3, NULL, screen, &textLocation3);
+
+
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
     }
