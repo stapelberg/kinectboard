@@ -8,7 +8,12 @@
  
  #include <sys/types.h>
  #include <SDL/SDL.h>
+ #include <stdbool.h>
  
+/* ******************************************************************* */
+/* Utility function */
+SDL_Surface* kb_surface_fill_color(SDL_Rect* box, SDL_Color* color);
+
 /* ******************************************************************* */
 /* Control list structure */
 
@@ -49,7 +54,7 @@ void kb_controls_render(kb_controls* list, SDL_Surface* screen);
 void kb_controls_add_control(kb_controls* list, kb_type type, void* ptr);
 
 // Input processing
-void kb_process_input(kb_controls* list, uint8_t button, int x, int y);
+bool kb_process_input(kb_controls* list, uint8_t button, int x, int y);
 void kb_process_mouse_motion(kb_controls* list, uint8_t button, int x, int y, int x_rel, int y_rel);
 
 /* ******************************************************************* */

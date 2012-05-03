@@ -17,7 +17,7 @@ int __kb_mouse_over(int mouse_x, int mouse_y, SDL_Rect* target) {
     return 0;
 }
 
-SDL_Surface* __kb_surface_fill_color(SDL_Rect* box, SDL_Color* color) {
+SDL_Surface* kb_surface_fill_color(SDL_Rect* box, SDL_Color* color) {
     Uint32 rmask, gmask, bmask; //, amask;
       #if SDL_BYTEORDER == SDL_BIG_ENDIAN
          rmask = 0xff000000;
@@ -150,30 +150,36 @@ void kb_process_mouse_motion(kb_controls* list, uint8_t button, int x, int y, in
 	}
 }
 
-void kb_process_input(kb_controls* list, uint8_t button, int x, int y)
+bool kb_process_input(kb_controls* list, uint8_t button, int x, int y)
 {    
-    if(!list) { return; } 
+    if(!list) { 
+	return false; 
+    } 
 
     kb_controls_node* ptr = list->root;	
 	while(ptr != 0) {
         if(ptr->data != 0) {
             if(ptr->type == KB_BUTTON) {
                 kb_button* btn = (kb_button*)ptr->data;
-                if(__kb_mouse_over(x, y, &btn->box) > 0) {
+		if(__kb_mouse_over(x, y, &btn->box) > 0) {
                     btn->callback(0);
+		    return true;
                 }
             } 
+	    
 	    if(ptr->type == KB_SLIDER) {
-	    kb_slider* slider = (kb_slider*)ptr->data;
+		kb_slider* slider = (kb_slider*)ptr->data;
                 if(__kb_mouse_over(x, y, &slider->box) > 0) {
 		    slider->knob_box.x = x - (slider->knob_box.w / 2);
                     slider->callback(((0.f + (x - slider->box.x + (slider->knob_box.w / 2))) / slider->box.w*1.f));
-                }
-            } 
-        }
-		
-        ptr = ptr->next;
+		    return true;
+		}
+	    } 
 	}
+	ptr = ptr->next;
+    }
+    
+    return false;
 }
  
 void kb_controls_render(kb_controls* list, SDL_Surface* screen) 
@@ -204,12 +210,12 @@ void kb_controls_render(kb_controls* list, SDL_Surface* screen)
 /* KB Button */
 kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_button_cb button_pressed_callback)
 {
-	kb_button* btn = (kb_button*)malloc(sizeof(kb_button));
+    kb_button* btn = (kb_button*)malloc(sizeof(kb_button));
     
-	btn->callback = button_pressed_callback;
+    btn->callback = button_pressed_callback;
 
     btn->box.w = width;
-	btn->box.h = height;
+    btn->box.h = height;
     
     // Apply offsets later
     btn->box.x = 0;
@@ -219,12 +225,12 @@ kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, 
     SDL_Color color_normal = {255,220,100};
     SDL_Color color_hover = {255,240,100};
 
-	btn->btn_norm  = __kb_surface_fill_color(&btn->box, &color_normal);
-    btn->btn_hover = __kb_surface_fill_color(&btn->box, &color_hover);
+    btn->btn_norm  = kb_surface_fill_color(&btn->box, &color_normal);
+    btn->btn_hover = kb_surface_fill_color(&btn->box, &color_hover);
     
     // apply offset
     btn->box.x = xpos;
-	btn->box.y = ypos;
+    btn->box.y = ypos;
 
     btn->state = 0;
     btn->id = ++CONTROL_ID;
@@ -276,7 +282,7 @@ kb_slider* kb_slider_create(kb_controls* list, int width, int height, int xpos, 
     slider->pane_box.h = 4;
     slider->pane_box.x = 0;
     slider->pane_box.y = 0;
-    slider->slider_pane  = __kb_surface_fill_color(&slider->pane_box, &color_pane);
+    slider->slider_pane = kb_surface_fill_color(&slider->pane_box, &color_pane);
     slider->pane_box.x = xpos;
     slider->pane_box.y = ypos+(slider->box.h/4);
     
@@ -285,8 +291,8 @@ kb_slider* kb_slider_create(kb_controls* list, int width, int height, int xpos, 
     slider->knob_box.h = height;
     slider->knob_box.x = 0;
     slider->knob_box.y = 0;
-    slider->slider_knob_norm  = __kb_surface_fill_color(&slider->knob_box, &color_normal);
-    slider->slider_knob_hover = __kb_surface_fill_color(&slider->knob_box, &color_hover);
+    slider->slider_knob_norm  = kb_surface_fill_color(&slider->knob_box, &color_normal);
+    slider->slider_knob_hover = kb_surface_fill_color(&slider->knob_box, &color_hover);
     
     slider->knob_box.x = xpos+(slider->box.w * initial_value/100.f)-(slider->knob_box.w/2);
     slider->knob_box.y = ypos-(slider->box.h/4);
