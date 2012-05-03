@@ -36,4 +36,7 @@ void kb_image_create(const char *label, uint8_t **buffer);
 
 void kb_images_render(SDL_Surface *screen);
 
+void kb_images_scroll_left(void);
+void kb_images_scroll_right(void);
+
 #endif

@@ -47,6 +47,7 @@
 #include "quickselect.c"
 
 #include "kinectboard_controls.h"
+#include "kinectboard_images.h"
 
 // two kinect images (full resolution) next to each other
 #define SCREEN_WIDTH (640 * 2)
@@ -102,8 +103,7 @@ struct range {
 struct range empty_canvas[640 * 480];
 struct range empty_canvas_copy[640 * 480];
 
-int animation_step = 0;
-int ANIMATION_ONE_STEP = 30;
+extern int ANIMATION_ONE_STEP;
 // Idealerweise auf 13, sobald wir CUDA haben. Bis dahin auf 9.
 int MEDIAN_FILTER_SIZE = 5;
 pthread_mutex_t median_filter_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -336,8 +336,11 @@ void kb_poll_events(kb_controls* list) {
                 if(event.key.keysym.sym == SDLK_ESCAPE) {
                     exit(0);	
                 }
+                if (event.key.keysym.sym == SDLK_LEFT) {
+                    kb_images_scroll_left();
+                }
                 if (event.key.keysym.sym == SDLK_RIGHT) {
-                    animation_step = 640;
+                    kb_images_scroll_right();
                 }
                 break;
             break;
@@ -459,6 +462,7 @@ int main(int argc, char *argv[]) {
     
     char mediantextbuffer[256];
 
+    kb_image_create("Raw depth image", &raw_depth_front);
     kb_image_create("Median-filtered depth image", &depth_front);
     kb_image_create("Raw kinect RGB image", &rgb_front);
 
@@ -504,23 +508,11 @@ int main(int argc, char *argv[]) {
 
         pthread_mutex_unlock(&gl_backbuf_mutex);
 
-#if 0
-    targetarea_raw_depth.x = 640 + animation_step;
-    targetarea_raw_depth.y = 0;
-    targetarea_raw_depth.w = kinect_rgb->w;
-    targetarea_raw_depth.h = kinect_rgb->h;
-
-    if (animation_step)
-        animation_step -= ANIMATION_ONE_STEP;
-    if (animation_step < 0)
-        animation_step = 0;
-#endif
-
         kb_poll_events(list);
         
+        kb_images_render(screen);
         kb_controls_render(list, screen);
 
-        kb_images_render(screen);
 
         //kb_label* median_px_label = kb_label_create(list, , 10, "blaaaaaaa", font);
 #if 0
