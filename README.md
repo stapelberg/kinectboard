@@ -11,6 +11,7 @@ Required Librarys
 * SDLTTF
 * OpenGL 3
 * Glut 3
+* TTF Bitstream-Vera
 
 On Debian, try:
 
