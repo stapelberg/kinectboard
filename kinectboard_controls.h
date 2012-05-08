@@ -58,7 +58,8 @@ void kb_controls_add_control(kb_controls* list, kb_type type, void* ptr);
 // Input processing
 bool kb_process_input(kb_controls* list, uint8_t button, int x, int y);
 void kb_process_mouse_motion(kb_controls* list, uint8_t button, int x, int y, int x_rel, int y_rel);
-
+void kb_process_keyboard(kb_controls* list, SDLKey key);
+                    
 /* ******************************************************************* */
 /* Button */
 typedef void (*kb_button_cb)(void *placeholder);
@@ -69,11 +70,12 @@ typedef struct
 	uint32_t id;
 	SDL_Surface* btn_norm;
 	SDL_Surface* btn_hover;
-	//SDL_Surface* btn_pressed;
+	SDL_Surface* btn_toggled;
 	SDL_Rect box;
 	SDL_Surface* text;
 	kb_button_cb callback;
 	uint8_t state;
+	SDLKey shortcut;
 } kb_button;
 
 typedef struct
@@ -90,7 +92,7 @@ void kb_label_changeText(kb_label* label, const char* newText);
 #pragma pack(pop)
 
 // Create Button
-kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_button_cb button_pressed_callbackconst, const char* buttonText, TTF_Font* font);
+kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_button_cb button_pressed_callback, SDLKey shortcut, const char* buttonText, TTF_Font* font);
 // Create Label
 kb_label* kb_label_create(kb_controls* list, int xpos, int ypos, const char* labelText, TTF_Font* font);
 

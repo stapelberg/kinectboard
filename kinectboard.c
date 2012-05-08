@@ -362,12 +362,12 @@ void kb_poll_events(kb_controls* list) {
             case SDL_KEYDOWN:
                 if(event.key.keysym.sym == SDLK_ESCAPE) {
                     exit(0);	
-                }
-                if (event.key.keysym.sym == SDLK_LEFT) {
+                } else if (event.key.keysym.sym == SDLK_LEFT) {
                     kb_images_scroll_left();
-                }
-                if (event.key.keysym.sym == SDLK_RIGHT) {
+                } else if (event.key.keysym.sym == SDLK_RIGHT) {
                     kb_images_scroll_right();
+                } else {
+                    kb_process_keyboard(list, event.key.keysym.sym);
                 }
                 break;
             break;
@@ -443,7 +443,7 @@ int main(int argc, char *argv[]) {
     SDL_WM_SetCaption("kinectboard", "");
 
     //create Font
-    TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeMono.ttf", 32);
+    TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeMono.ttf", 15);
     TTF_Font *slider_label_font = TTF_OpenFont("/usr/share/fonts/truetype/ttf-bitstream-vera/Vera.ttf", 14);
     if (!font) {
         printf("font not found\n");
@@ -453,10 +453,11 @@ int main(int argc, char *argv[]) {
     kb_controls* list = kb_controls_create();
     
     kb_label_create(list, 10, 10, "blaaaaaaa", font);
+    
     // Some Buttons
-    kb_button_create(list,100,25,10,10, &btn_test_funct, "lol", font);
-    kb_button_create(list,100,25,120,10, &btn_test_funct, "lol1", font);
-    kb_button_create(list,100,25,230,10, &btn_test_funct, "lol2", font);
+    kb_button_create(list,100,25,10,10, &btn_test_funct, SDLK_e, "Eichen (e)", font);
+    kb_button_create(list,100,25,120,10, &btn_test_funct, SDLK_r, "ROFL (r)", font);
+    kb_button_create(list,100,25,230,10, &btn_test_funct, SDLK_t, "Troll (t)", font);
     
     // Median pixel values
     kb_label_create(list, 5, 500, "Median pixels:", slider_label_font);

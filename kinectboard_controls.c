@@ -148,7 +148,7 @@ void kb_process_mouse_motion(kb_controls* list, uint8_t button, int x, int y, in
         if(ptr->data != 0) {
             if(ptr->type == KB_BUTTON) {
                 kb_button* btn = (kb_button*)ptr->data;
-                btn->state = __kb_mouse_over(x, y, &btn->box); 
+                btn->state = btn->state > 1 ? 2 : __kb_mouse_over(x, y, &btn->box);
             }
 	    if(ptr->type == KB_SLIDER) {
                 kb_slider* slider = (kb_slider*)ptr->data;
@@ -185,6 +185,7 @@ bool kb_process_input(kb_controls* list, uint8_t button, int x, int y)
             if(ptr->type == KB_BUTTON) {
                 kb_button* btn = (kb_button*)ptr->data;
 		if(__kb_mouse_over(x, y, &btn->box) > 0) {
+		    btn->state = btn->state > 1 ? 0 : 2;
                     btn->callback(0);
 		    return true;
                 }
@@ -205,6 +206,26 @@ bool kb_process_input(kb_controls* list, uint8_t button, int x, int y)
     
     return false;
 }
+
+void kb_process_keyboard(kb_controls* list, SDLKey key) {
+    if(!list) { 
+	return; 
+    } 
+    kb_controls_node* ptr = list->root;	
+	while(ptr != 0) {
+        if(ptr->data != 0) {
+            if(ptr->type == KB_BUTTON) {
+                kb_button* btn = (kb_button*)ptr->data;
+		if(btn->shortcut == key) {
+                    btn->state = btn->state > 1 ? 0 : 2;
+		    btn->callback(0);
+		    return;
+                }
+            }
+	}
+	ptr = ptr->next;
+    }
+}
  
 void kb_controls_render(kb_controls* list, SDL_Surface* screen) 
 {
@@ -216,17 +237,15 @@ void kb_controls_render(kb_controls* list, SDL_Surface* screen)
         if(ptr->data != 0) {
             if(ptr->type == KB_BUTTON) {
                 kb_button* btn = (kb_button*)ptr->data;
-                SDL_BlitSurface(btn->state > 0 ?  btn->btn_hover : btn->btn_norm, NULL, screen, &btn->box);
-            } else if(ptr->type == KB_SLIDER) {
+		SDL_BlitSurface(btn->state > 0 ?  (btn->state > 1 ? btn->btn_toggled : btn->btn_hover) : btn->btn_norm, NULL, screen, &btn->box);
+	    } else if(ptr->type == KB_SLIDER) {
                 kb_slider* slider = (kb_slider*)ptr->data;	
-		
                 SDL_BlitSurface(slider->slider_pane, NULL, screen, &slider->pane_box);
-		
                 SDL_BlitSurface(slider->state > 0 ?  slider->slider_knob_hover : slider->slider_knob_norm, NULL, screen, &slider->knob_box);
             } else if (ptr->type == KB_LABEL) {
-				kb_label* label = (kb_label*)ptr->data;
+		kb_label* label = (kb_label*)ptr->data;
                 SDL_BlitSurface(label->text, NULL, screen, &label->textLocation);
-			}
+	    }
         }
 		
         ptr = ptr->next;
@@ -236,7 +255,7 @@ void kb_controls_render(kb_controls* list, SDL_Surface* screen)
 
 /* ******************************************************************* */
 /* KB Button */
-kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_button_cb button_pressed_callback, const char* buttonText, TTF_Font* font)
+kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, int ypos, kb_button_cb button_pressed_callback, SDLKey shortcut, const char* buttonText, TTF_Font* font)
 {
     kb_button* btn = (kb_button*)malloc(sizeof(kb_button));
     
@@ -251,10 +270,12 @@ kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, 
     
     // Add some color
     SDL_Color color_normal = {255,220,100};
+    SDL_Color color_toggled = {255,200,255};
     SDL_Color color_hover = {255,240,100};
 
     btn->btn_norm  = kb_surface_fill_color(&btn->box, &color_normal);
     btn->btn_hover = kb_surface_fill_color(&btn->box, &color_hover);
+    btn->btn_toggled = kb_surface_fill_color(&btn->box, &color_toggled);
     
     // apply offset
     btn->box.x = xpos;
@@ -266,13 +287,17 @@ kb_button* kb_button_create(kb_controls* list, int width, int height, int xpos, 
     kb_controls_add_control(list, KB_BUTTON, btn);
     SDL_Color foregroundColor = { 0, 0, 0};
     btn->text = TTF_RenderText_Solid(font, buttonText, foregroundColor);
+    btn->shortcut = shortcut;
+    
     //TextLocation muss noch angepasst werden.
-    SDL_Rect textLocation = { 0, 0, 0, 0 };
+    SDL_Rect textLocation = { 6, 5, 0, 0 };
     SDL_BlitSurface(btn->text, NULL, btn->btn_norm, &textLocation);
     SDL_BlitSurface(btn->text, NULL, btn->btn_hover, &textLocation);
+    SDL_BlitSurface(btn->text, NULL, btn->btn_toggled, &textLocation);
 	
     return btn;
 }
+
 
 kb_label* kb_label_create(kb_controls* list, int xpos, int ypos, const char* labelText, TTF_Font* font) {
 	kb_label* label = (kb_label*)malloc(sizeof(kb_label));
