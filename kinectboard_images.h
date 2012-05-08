@@ -6,9 +6,10 @@
 #ifndef __KINECTBOARD_IMAGES
 #define __KINECTBOARD_IMAGES
  
- #include <sys/types.h>
- #include <SDL/SDL.h>
- #include <stdbool.h>
+#include <sys/types.h>
+#include <SDL/SDL.h>
+#include <stdbool.h>
+#include <SDL/SDL_ttf.h>
 
 #include "queue.h"
  
@@ -28,6 +29,8 @@ typedef struct kb_image {
 
     SDL_Surface *surface;
     SDL_Rect area;
+    SDL_Surface* labelText;
+    SDL_Rect labelTextLocation;
 
     CIRCLEQ_ENTRY(kb_image) image;
 } kb_image;
