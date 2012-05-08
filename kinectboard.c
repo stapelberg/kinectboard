@@ -120,8 +120,6 @@ double DEPTH_MASK_MULTIPLIER = 0.0f;
 
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
-    pthread_mutex_lock(&gl_backbuf_mutex);
-
     // swap buffers
     assert (rgb_back == rgb);
     rgb_back = rgb_mid;
@@ -155,18 +153,19 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
         }
     }
 
-    got_rgb++;
-    pthread_cond_signal(&gl_frame_cond);
-    pthread_mutex_unlock(&gl_backbuf_mutex);
+    /* Buffer austauschen (double-buffering) */
+    uint8_t *tmp = rgb_front;
+    rgb_front = rgb_mid;
+    rgb_mid = tmp;
 }
 
 #define row_col_to_px(row, col) ((row) * 640 + (col))
 
 void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 {
+    printf("depth_cb\n");
     int i, col, row;
     uint16_t *depth = (uint16_t*)v_depth;
-    pthread_mutex_lock(&gl_backbuf_mutex);
 
     pthread_mutex_lock(&median_filter_mutex);
     int nneighbors[MEDIAN_FILTER_SIZE * MEDIAN_FILTER_SIZE];
@@ -217,9 +216,13 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 
     pthread_mutex_unlock(&median_filter_mutex);
 
-    got_depth++;
-    pthread_cond_signal(&gl_frame_cond);
-    pthread_mutex_unlock(&gl_backbuf_mutex);
+    uint8_t *tmp = depth_front;
+    depth_front = depth_mid;
+    depth_mid = tmp;
+
+    tmp = raw_depth_front;
+    raw_depth_front = raw_depth_mid;
+    raw_depth_mid = tmp;
 }
 
 void *freenect_threadfunc(void *arg)
@@ -467,47 +470,6 @@ int main(int argc, char *argv[]) {
     kb_image_create("Raw kinect RGB image", &rgb_front);
 
     while (1) {
-        pthread_mutex_lock(&gl_backbuf_mutex);
-
-        // When using YUV_RGB mode, RGB frames only arrive at 15Hz, so we shouldn't force them to draw in lock-step.
-        // However, this is CPU/GPU intensive when we are receiving frames in lockstep.
-        if (current_format == FREENECT_VIDEO_YUV_RGB) {
-            while (!got_depth && !got_rgb) {
-                pthread_cond_wait(&gl_frame_cond, &gl_backbuf_mutex);
-            }
-        } else {
-            while ((!got_depth || !got_rgb) && requested_format != current_format) {
-                pthread_cond_wait(&gl_frame_cond, &gl_backbuf_mutex);
-            }
-        }
-
-        if (requested_format != current_format) {
-            pthread_mutex_unlock(&gl_backbuf_mutex);
-            return;
-        }
-
-        uint8_t *tmp;
-
-        if (got_depth) {
-            tmp = depth_front;
-            depth_front = depth_mid;
-            depth_mid = tmp;
-
-            tmp = raw_depth_front;
-            raw_depth_front = raw_depth_mid;
-            raw_depth_mid = tmp;
-
-            got_depth = 0;
-        }
-        if (got_rgb) {
-            tmp = rgb_front;
-            rgb_front = rgb_mid;
-            rgb_mid = tmp;
-            got_rgb = 0;
-        }
-
-        pthread_mutex_unlock(&gl_backbuf_mutex);
-
         kb_poll_events(list);
         
         kb_images_render(screen);

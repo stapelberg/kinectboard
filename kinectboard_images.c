@@ -48,11 +48,9 @@ void kb_images_render(SDL_Surface *screen) {
     int i = 0, cnt = 0;
     SDL_Rect area;
     kb_image *img;
-    printf("rendering.\n");
     CIRCLEQ_FOREACH(img, &image_head, image) {
         if (i++ < startidx)
             continue;
-        printf("rendering %s\n", img->label);
         area = img->area;
         area.x += animation_step;
         if (animation_direction == A_FROM_RIGHT_TO_LEFT && animation_step > 0) {
