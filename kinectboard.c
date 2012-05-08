@@ -119,6 +119,8 @@ double FILTER_DISTANCE = 0.2f;
 double DEPTH_MASK_MULTIPLIER = 0.0f;
 
 kb_label *median_slider_value;
+kb_label *depth_slider_value;
+kb_label *distance_slider_value;
 
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
@@ -301,11 +303,19 @@ void slider_test_funct(float slider_val) {
 void modify_distance(float slider_val) {
     printf("Slider at %f percent.\n", slider_val*100.f);
     FILTER_DISTANCE = slider_val;
+
+    char buffer[2048];
+    snprintf(buffer, sizeof(buffer), "%f px", FILTER_DISTANCE);
+    kb_label_changeText(distance_slider_value, buffer);
 }
 
 void modify_depth_mask_multiplier(float slider_val) {
     printf("Slider at %f percent.\n", slider_val*100.f);
     DEPTH_MASK_MULTIPLIER = slider_val;
+
+    char buffer[2048];
+    snprintf(buffer, sizeof(buffer), "%f px", DEPTH_MASK_MULTIPLIER);
+    kb_label_changeText(depth_slider_value, buffer);
 }
 
 
@@ -464,9 +474,11 @@ int main(int argc, char *argv[]) {
     kb_slider *median_slider = kb_slider_create(list, 300, 25, 175, 500, &slider_test_funct, 5.f);
 
     kb_label *distance_slider_label = kb_label_create(list, 5, 540, "Distance threshold:", slider_label_font);
-    kb_slider *distance_slider = kb_slider_create(list, 300,25,175,540, &modify_distance, .2f);
+    distance_slider_value = kb_label_create(list, 500, 540, "0.2", slider_label_font);
+    kb_slider *distance_slider = kb_slider_create(list, 300,25,175,540, &modify_distance, 20);
 
     kb_label *depth_slider_label = kb_label_create(list, 5, 580, "Depth multiplier:", slider_label_font);
+    depth_slider_value = kb_label_create(list, 500, 580, "0", slider_label_font);
     kb_slider *depth_multiplier = kb_slider_create(list, 300,25,175,580, &modify_depth_mask_multiplier, .2f);
     
     char mediantextbuffer[256];
@@ -483,23 +495,6 @@ int main(int argc, char *argv[]) {
         kb_poll_events(list);
         kb_images_render(screen);
         kb_controls_render(list, screen);
-
-
-        //kb_label* median_px_label = kb_label_create(list, , 10, "blaaaaaaa", font);
-#if 0
-        snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Median: %d pixel", MEDIAN_FILTER_SIZE);
-        SDL_Surface* textSurface = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
-        SDL_BlitSurface(textSurface, NULL, screen, &textLocation);
-        
-        snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Distance: %f", FILTER_DISTANCE);
-        SDL_Surface* textSurface2 = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
-        SDL_BlitSurface(textSurface2, NULL, screen, &textLocation2);
-
-        snprintf(mediantextbuffer, sizeof(mediantextbuffer), "Depth mask multiplier: %f", DEPTH_MASK_MULTIPLIER);
-        SDL_Surface* textSurface3 = TTF_RenderText_Solid(font, mediantextbuffer, foregroundColor);
-        SDL_BlitSurface(textSurface3, NULL, screen, &textLocation3);
-
-#endif
 
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
