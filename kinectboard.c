@@ -371,16 +371,12 @@ void kb_poll_events(kb_controls* list) {
 int main(int argc, char *argv[]) {
 
     SDL_Surface *screen;
-    Uint8       *p;
-    int         x = 10; //x coordinate of our pixel
-    int         y = 20; //y coordinate of our pixel
-
 
     int i;
     for (i=0; i<2048; i++) {
-        const float k1 = 1.1863;
-        const float k2 = 2842.5;
-        const float k3 = 0.1236;
+        //const float k1 = 1.1863;
+        //const float k2 = 2842.5;
+        //const float k3 = 0.1236;
         //const float depth = k3 * tanf(i/k2 + k1);
         //t_gamma[i] = depth;
         depthPixelsLookupNearWhite[i] = (float) (2048 * 256) / (i - 2048);
@@ -436,21 +432,6 @@ int main(int argc, char *argv[]) {
     /* Initialize the screen / window */
     screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_DEPTH, SDL_SWSURFACE);
     SDL_WM_SetCaption("kinectboard", "");
-    Uint32 rmask, gmask, bmask, amask;
-
-    /* SDL interprets each pixel as a 32-bit number, so our masks must depend
-       on the endianness (byte order) of the machine */
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-    rmask = 0xff000000;
-    gmask = 0x00ff0000;
-    bmask = 0x0000ff00;
-    amask = 0;
-#else
-    rmask = 0x000000ff;
-    gmask = 0x0000ff00;
-    bmask = 0x00ff0000;
-    amask = 0;
-#endif
 
     //create Font
     TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeMono.ttf", 32);
@@ -462,27 +443,27 @@ int main(int argc, char *argv[]) {
 
     kb_controls* list = kb_controls_create();
     
-    kb_label* label = kb_label_create(list, 10, 10, "blaaaaaaa", font);
+    kb_label_create(list, 10, 10, "blaaaaaaa", font);
     // Some Buttons
-    kb_button* btn = kb_button_create(list,100,25,10,10, &btn_test_funct, "lol", font);
-    kb_button* btn1 = kb_button_create(list,100,25,120,10, &btn_test_funct, "lol1", font);
-    kb_button* btn2 = kb_button_create(list,100,25,230,10, &btn_test_funct, "lol2", font);
+    kb_button_create(list,100,25,10,10, &btn_test_funct, "lol", font);
+    kb_button_create(list,100,25,120,10, &btn_test_funct, "lol1", font);
+    kb_button_create(list,100,25,230,10, &btn_test_funct, "lol2", font);
     
-    // A slider
-    kb_label *median_slider_label = kb_label_create(list, 5, 500, "Median pixels:", slider_label_font);
+    // Median pixel values
+    kb_label_create(list, 5, 500, "Median pixels:", slider_label_font);
     median_slider_value = kb_label_create(list, 500, 500, "5 px", slider_label_font);
-    kb_slider *median_slider = kb_slider_create(list, 300, 25, 175, 500, &slider_test_funct, 5.f);
+    kb_slider_create(list, 300, 25, 175, 500, &slider_test_funct, 5.f);
 
-    kb_label *distance_slider_label = kb_label_create(list, 5, 540, "Distance threshold:", slider_label_font);
+    // Distance slider
+    kb_label_create(list, 5, 540, "Distance threshold:", slider_label_font);
     distance_slider_value = kb_label_create(list, 500, 540, "0.2", slider_label_font);
-    kb_slider *distance_slider = kb_slider_create(list, 300,25,175,540, &modify_distance, 20);
+    kb_slider_create(list, 300,25,175,540, &modify_distance, 20);
 
-    kb_label *depth_slider_label = kb_label_create(list, 5, 580, "Depth multiplier:", slider_label_font);
+    // Depth multiplier
+    kb_label_create(list, 5, 580, "Depth multiplier:", slider_label_font);
     depth_slider_value = kb_label_create(list, 500, 580, "0", slider_label_font);
-    kb_slider *depth_multiplier = kb_slider_create(list, 300,25,175,580, &modify_depth_mask_multiplier, .2f);
+    kb_slider_create(list, 300,25,175,580, &modify_depth_mask_multiplier, .2f);
     
-    char mediantextbuffer[256];
-
     kb_image_create("Raw depth image", &raw_depth_front);
     kb_image_create("Median-filtered depth image", &depth_front);
     kb_image_create("Raw kinect RGB image", &rgb_front);
