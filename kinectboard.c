@@ -469,9 +469,12 @@ int main(int argc, char *argv[]) {
     kb_image_create("Median-filtered depth image", &depth_front);
     kb_image_create("Raw kinect RGB image", &rgb_front);
 
+    SDL_Rect kb_screen_rect = {0,0,SCREEN_WIDTH, SCREEN_HEIGHT};
+    SDL_Color kb_background_color = {0,0,0};
+    SDL_Surface* kb_background = kb_surface_fill_color(&kb_screen_rect, &kb_background_color);
+        
     while (1) {
         kb_poll_events(list);
-        
         kb_images_render(screen);
         kb_controls_render(list, screen);
 
@@ -494,5 +497,8 @@ int main(int argc, char *argv[]) {
 
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
+        
+        /* Draw background */
+        SDL_BlitSurface(kb_background, NULL, screen, &kb_screen_rect);
     }
 }
