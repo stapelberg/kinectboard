@@ -2,8 +2,10 @@
 
 #include "kinectboard_controls.h"
 #include <malloc.h>
+#include <pthread.h>
 
 static uint32_t CONTROL_ID = 0;
+static pthread_mutex_t rendermutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* ******************************************************************* */
 /* KB Utility functions */
@@ -208,6 +210,7 @@ void kb_controls_render(kb_controls* list, SDL_Surface* screen)
 {
 	if(!list) { return; } 
 
+    pthread_mutex_lock(&rendermutex);
 	kb_controls_node* ptr = list->root;
 	while(ptr != 0) {
         if(ptr->data != 0) {
@@ -228,6 +231,7 @@ void kb_controls_render(kb_controls* list, SDL_Surface* screen)
 		
         ptr = ptr->next;
 	}
+    pthread_mutex_unlock(&rendermutex);
 }
 
 /* ******************************************************************* */
@@ -283,8 +287,10 @@ kb_label* kb_label_create(kb_controls* list, int xpos, int ypos, const char* lab
 }
 
 void kb_label_changeText(kb_label* label, const char* newText) {
+    pthread_mutex_lock(&rendermutex);
 	SDL_FreeSurface(label->text);
 	label->text = TTF_RenderText_Solid(label->font, newText, label->color);
+    pthread_mutex_unlock(&rendermutex);
 }
 
 void kb_button_destroy(kb_controls* list, kb_button* btn) 

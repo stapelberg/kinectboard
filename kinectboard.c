@@ -118,6 +118,8 @@ double FILTER_DISTANCE = 0.2f;
 
 double DEPTH_MASK_MULTIPLIER = 0.0f;
 
+kb_label *median_slider_value;
+
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
     // swap buffers
@@ -289,6 +291,9 @@ void slider_test_funct(float slider_val) {
     MEDIAN_FILTER_SIZE = slider_val * 100.f;
     if ((MEDIAN_FILTER_SIZE % 2) == 0)
         MEDIAN_FILTER_SIZE += 1;
+    char buffer[2048];
+    snprintf(buffer, sizeof(buffer), "%d px", MEDIAN_FILTER_SIZE);
+    kb_label_changeText(median_slider_value, buffer);
     pthread_mutex_unlock(&median_filter_mutex);
     fflush(stdout);
 }
@@ -455,6 +460,7 @@ int main(int argc, char *argv[]) {
     
     // A slider
     kb_label *median_slider_label = kb_label_create(list, 5, 500, "Median pixels:", slider_label_font);
+    median_slider_value = kb_label_create(list, 500, 500, "5 px", slider_label_font);
     kb_slider *median_slider = kb_slider_create(list, 300, 25, 175, 500, &slider_test_funct, 5.f);
 
     kb_label *distance_slider_label = kb_label_create(list, 5, 540, "Distance threshold:", slider_label_font);
