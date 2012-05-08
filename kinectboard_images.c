@@ -33,6 +33,13 @@ void kb_image_create(const char *label, uint8_t **buffer) {
     new_img->label = label;
     new_img->buffer = buffer;
     new_img->surface = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 480, 24, RMASK, GMASK, BMASK, 0);
+    
+    TTF_Font* label_font = TTF_OpenFont("/usr/share/fonts/truetype/ttf-bitstream-vera/Vera.ttf", 28);
+	SDL_Color color = (SDL_Color){255,255,255};
+	new_img->labelText = TTF_RenderText_Solid(label_font, new_img->label, color);
+	new_img->labelTextLocation = (SDL_Rect){ 120, 5,10,10 };
+	SDL_BlitSurface(new_img->labelText, NULL, new_img->surface, &new_img->labelTextLocation);
+    
     /* Wir unterscheiden hier nur zwischen 0 und 1 Elementen. Es werden nur die
      * ersten beiden Bilder gerendert standardmäßig (kein Platz mehr auf dem
      * Bildschirm). Wenn der Nutzer scrolled, werden die areas ohnehin neu
@@ -66,6 +73,7 @@ void kb_images_render(SDL_Surface *screen) {
         }
 
         memcpy(img->surface->pixels, *(img->buffer), 640 * 480 * 3);
+        SDL_BlitSurface(img->labelText, NULL, img->surface, &img->labelTextLocation);
         SDL_BlitSurface(img->surface, NULL, screen, &area);
         if (++cnt == 2)
             break;
