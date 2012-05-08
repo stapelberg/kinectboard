@@ -122,6 +122,8 @@ kb_label *median_slider_value;
 kb_label *depth_slider_value;
 kb_label *distance_slider_value;
 
+SDL_Surface *chosen_color_surface;
+
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
     // swap buffers
@@ -347,6 +349,13 @@ void kb_poll_events(kb_controls* list) {
                         printf("r = %f, g = %f, b = %f\n", r, g, b);
                         printf("reference: r = %f, g = %f, b = %f\n",
                                 reference_r, reference_g, reference_b);
+
+                        SDL_Color kb_background_color = { r, g, b };
+                        printf("rendering rect in %d, %d, %d\n",
+                                kb_background_color.r, kb_background_color.g, kb_background_color.b);
+                        SDL_Rect chosen_color_rect = { 0, 0, 200, 20 };
+                        free(chosen_color_surface);
+                        chosen_color_surface = kb_surface_fill_color(&chosen_color_rect, &kb_background_color);
                     }
                 }
             break;
@@ -470,17 +479,28 @@ int main(int argc, char *argv[]) {
 
     SDL_Rect kb_screen_rect = {0,0,SCREEN_WIDTH, SCREEN_HEIGHT};
     SDL_Color kb_background_color = {0,0,0};
+    // Reference color
+    kb_label_create(list, 640, 500, "Reference color:", slider_label_font);
+    /* Rect to fill *within* the rectangle, needs to start at 0 x 0 */
+    SDL_Rect origin_rect = { 0, 0, 200, 20 };
+    /* Where the rectangle ends up on the screen */
+    SDL_Rect chosen_color_rect = { 800, 500, 200, 20};
+    chosen_color_surface = kb_surface_fill_color(&origin_rect, &kb_background_color);
     SDL_Surface* kb_background = kb_surface_fill_color(&kb_screen_rect, &kb_background_color);
         
     while (1) {
+        /* Schwarzer Hintergrund */
+        SDL_BlitSurface(kb_background, NULL, screen, &kb_screen_rect);
+
         kb_poll_events(list);
         kb_images_render(screen);
         kb_controls_render(list, screen);
 
+        /* Für manche Dinge in der GUI haben wir keine eigenen Controls, z.B.
+         * für den gewählten Farbwert. */
+        SDL_BlitSurface(chosen_color_surface, NULL, screen, &chosen_color_rect);
+
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
-        
-        /* Draw background */
-        SDL_BlitSurface(kb_background, NULL, screen, &kb_screen_rect);
     }
 }
