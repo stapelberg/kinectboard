@@ -76,8 +76,13 @@ uint8_t *depth_mid, *depth_front;
 // processed depth as raw values (with a median filter)
 uint8_t *depth_median_filtered;
 uint8_t *depth_median_filtered_rgb;
+uint8_t *depth_median_filtered_masked_rgb;
 // processed and masked depth as an RGB image
 uint8_t *masked_depth_mid, *masked_depth_front;
+// processed and masked depth as an RGB image (masked area retains the depth info)
+uint8_t *masked_depth_detail_mid, *masked_depth_detail_front;
+// Extremitäten erkennen
+uint8_t *extr_mid, *extr_front;
 // raw depth (as received from kinect)
 uint8_t *raw_depth_mid, *raw_depth_front;
 uint8_t *rgb_back, *rgb_mid, *rgb_front;
@@ -247,11 +252,52 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
                 masked_depth_mid[3 * i + 0] = 255;
                 masked_depth_mid[3 * i + 1] = 0;
                 masked_depth_mid[3 * i + 2] = 0;
+                depth_median_filtered_masked_rgb[i] = pvaln;
             } else {
                 masked_depth_mid[3 * i + 0] = pvaln;
                 masked_depth_mid[3 * i + 1] = pvaln;
                 masked_depth_mid[3 * i + 2] = pvaln;
+                depth_median_filtered_masked_rgb[i] = 255;
             }
+
+            if (difference > DEPTH_MASK_THRESHOLD) {
+                masked_depth_detail_mid[3 * i + 0] = pvaln;
+                masked_depth_detail_mid[3 * i + 1] = pvaln;
+                masked_depth_detail_mid[3 * i + 2] = pvaln;
+            } else {
+                masked_depth_detail_mid[3 * i + 0] = 0;
+                masked_depth_detail_mid[3 * i + 1] = 255;
+                masked_depth_detail_mid[3 * i + 2] = 0;
+            }
+
+        }
+    }
+
+    /* Extremitäten erkennen, indem wir den tiefsten Punkt suchen, der binnen
+     * 50 px Radius keinen hellgrauen Punkt hat */
+    int min = INT32_MAX;
+    for (row = 0; row < (480); row++) {
+        for (col = 0; col < 640; col++) {
+            i = row * 640 + col;
+            if (depth_median_filtered_masked_rgb[i] < min)
+                min = depth_median_filtered_masked_rgb[i];
+        }
+    }
+    printf("min = %d\n", min);
+
+    for (row = 0; row < (480); row++) {
+        for (col = 0; col < 640; col++) {
+            i = row * 640 + col;
+            if (abs(depth_median_filtered_masked_rgb[i] - min) < 10) {
+                extr_mid[3 * i + 0] = 0;
+                extr_mid[3 * i + 1] = 0;
+                extr_mid[3 * i + 2] = 255;
+            } else {
+                extr_mid[3 * i + 0] = 0;
+                extr_mid[3 * i + 1] = 0;
+                extr_mid[3 * i + 2] = 0;
+            }
+
         }
     }
 
@@ -268,6 +314,14 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
     tmp = masked_depth_front;
     masked_depth_front = masked_depth_mid;
     masked_depth_mid = tmp;
+
+    tmp = masked_depth_detail_front;
+    masked_depth_detail_front = masked_depth_detail_mid;
+    masked_depth_detail_mid = tmp;
+
+    tmp = extr_front;
+    extr_front = extr_mid;
+    extr_mid = tmp;
 }
 
 void *freenect_threadfunc(void *arg)
@@ -456,8 +510,13 @@ int main(int argc, char *argv[]) {
     depth_front = (uint8_t*)malloc(640*480*3);
     depth_median_filtered = (uint8_t*)malloc(640*480);
     depth_median_filtered_rgb = (uint8_t*)malloc(640*480);
+    depth_median_filtered_masked_rgb = (uint8_t*)malloc(640*480);
     masked_depth_mid = (uint8_t*)malloc(640*480*3);
     masked_depth_front = (uint8_t*)malloc(640*480*3);
+    masked_depth_detail_mid = (uint8_t*)malloc(640*480*3);
+    masked_depth_detail_front = (uint8_t*)malloc(640*480*3);
+    extr_mid = (uint8_t*)malloc(640*480*3);
+    extr_front = (uint8_t*)malloc(640*480*3);
     raw_depth_mid = (uint8_t*)malloc(640*480*3);
     raw_depth_front = (uint8_t*)malloc(640*480*3);
 
@@ -545,6 +604,8 @@ int main(int argc, char *argv[]) {
     kb_image_create("Raw depth image", &raw_depth_front);
     kb_image_create("Median-filtered depth image", &depth_front);
     kb_image_create("Masked depth image", &masked_depth_front);
+    kb_image_create("Masked depth detail image", &masked_depth_detail_front);
+    kb_image_create("Extremitäten", &extr_front);
     kb_image_create("Raw kinect RGB image", &rgb_front);
 
     SDL_Rect kb_screen_rect = {0,0,SCREEN_WIDTH, SCREEN_HEIGHT};
