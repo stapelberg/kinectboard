@@ -48,6 +48,7 @@
 
 #include "kinectboard_controls.h"
 #include "kinectboard_images.h"
+#include <sys/time.h>
 
 // two kinect images (full resolution) next to each other
 #define SCREEN_WIDTH (640 * 2)
@@ -179,8 +180,24 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 
 #define row_col_to_px(row, col) ((row) * 640 + (col))
 
+struct timeval lastUpdate;
+struct timeval currentTime;
+double currentTimeSeconds;
+double lastUpdateSeconds;
+int fps = 0;
 void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 {
+	lastUpdateSeconds = lastUpdate.tv_sec+(lastUpdate.tv_usec/1000000.0);
+	gettimeofday(&currentTime, NULL);
+	currentTimeSeconds = currentTime.tv_sec+(currentTime.tv_usec/1000000.0);
+	if((currentTimeSeconds - lastUpdateSeconds) > 1) {
+		fps = fps+1;
+		printf(" %d \n", fps);
+		fps = 0;
+		gettimeofday(&lastUpdate, NULL);
+	} else {
+		fps = fps+1;
+	}
     printf("depth_cb\n");
     int i, col, row;
     uint16_t *depth = (uint16_t*)v_depth;
@@ -618,7 +635,11 @@ int main(int argc, char *argv[]) {
     SDL_Rect chosen_color_rect = { 800, 500, 200, 20};
     chosen_color_surface = kb_surface_fill_color(&origin_rect, &kb_background_color);
     SDL_Surface* kb_background = kb_surface_fill_color(&kb_screen_rect, &kb_background_color);
-        
+    /*FPS Anzeige*/
+    char fpsBuffer[2048];
+    snprintf(fpsBuffer, sizeof(fpsBuffer), "%d px", fps);
+    kb_label* fpsLabel = kb_label_create(list, 1010, 500, fpsBuffer, slider_label_font);
+
     while (1) {
         /* Schwarzer Hintergrund */
         SDL_BlitSurface(kb_background, NULL, screen, &kb_screen_rect);
@@ -630,6 +651,10 @@ int main(int argc, char *argv[]) {
         /* Für manche Dinge in der GUI haben wir keine eigenen Controls, z.B.
          * für den gewählten Farbwert. */
         SDL_BlitSurface(chosen_color_surface, NULL, screen, &chosen_color_rect);
+
+		// Refresh fps
+		snprintf(fpsBuffer, sizeof(fpsBuffer), "FPS: %d px", fps);
+		kb_label_changeText(fpsLabel, fpsBuffer);
 
         /* update the screen (aka double buffering) */
         SDL_Flip(screen);
