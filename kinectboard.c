@@ -75,6 +75,9 @@ unsigned char depthPixelsLookupNearWhite[2048];
 uint8_t *depth_mid, *depth_front;
 // processed depth as raw values (with a median filter)
 uint8_t *depth_median_filtered;
+uint8_t *depth_median_filtered_rgb;
+// processed and masked depth as an RGB image
+uint8_t *masked_depth_mid, *masked_depth_front;
 // raw depth (as received from kinect)
 uint8_t *raw_depth_mid, *raw_depth_front;
 uint8_t *rgb_back, *rgb_mid, *rgb_front;
@@ -102,6 +105,7 @@ struct range {
 
 struct range empty_canvas[640 * 480];
 struct range empty_canvas_copy[640 * 480];
+static bool EICH_MODUS = false;
 
 extern int ANIMATION_ONE_STEP;
 // Idealerweise auf 13, sobald wir CUDA haben. Bis dahin auf 9.
@@ -118,9 +122,12 @@ double FILTER_DISTANCE = 0.2f;
 
 double DEPTH_MASK_MULTIPLIER = 0.0f;
 
+int DEPTH_MASK_THRESHOLD = 0;
+
 kb_label *median_slider_value;
 kb_label *depth_slider_value;
 kb_label *distance_slider_value;
+kb_label *depth_difference_value;
 
 SDL_Surface *chosen_color_surface;
 
@@ -214,9 +221,37 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
             int pvaln = quick_select(nneighbors, ni);
             depth_median_filtered[i] = pvaln;
             pvaln = depthPixelsLookupNearWhite[pvaln];
+            depth_median_filtered_rgb[i] = pvaln;
             depth_mid[3 * i + 0] = pvaln;
             depth_mid[3 * i + 1] = pvaln;
             depth_mid[3 * i + 2] = pvaln;
+
+            if (EICH_MODUS) {
+                if (pvaln < empty_canvas[i].min)
+                    empty_canvas[i].min = pvaln;
+                if (pvaln > empty_canvas[i].max)
+                    empty_canvas[i].max = pvaln;
+            }
+
+            int difference = 0;
+            if (pvaln < empty_canvas[i].min) {
+                difference = (empty_canvas[i].min - pvaln);
+                //printf("difference: %d\n", difference);
+            }
+            if (pvaln > empty_canvas[i].max) {
+                //printf("difference: %d\n", (empty_canvas[i].max - pvaln));
+                if ((pvaln - empty_canvas[i].max) > difference)
+                    difference = (pvaln - empty_canvas[i].max);
+            }
+            if (difference > DEPTH_MASK_THRESHOLD) {
+                masked_depth_mid[3 * i + 0] = 255;
+                masked_depth_mid[3 * i + 1] = 0;
+                masked_depth_mid[3 * i + 2] = 0;
+            } else {
+                masked_depth_mid[3 * i + 0] = pvaln;
+                masked_depth_mid[3 * i + 1] = pvaln;
+                masked_depth_mid[3 * i + 2] = pvaln;
+            }
         }
     }
 
@@ -229,6 +264,10 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
     tmp = raw_depth_front;
     raw_depth_front = raw_depth_mid;
     raw_depth_mid = tmp;
+
+    tmp = masked_depth_front;
+    masked_depth_front = masked_depth_mid;
+    masked_depth_mid = tmp;
 }
 
 void *freenect_threadfunc(void *arg)
@@ -286,6 +325,14 @@ void *freenect_threadfunc(void *arg)
 void toggle_eichen(uint8_t state) {
     printf("Button pressed, state = %d\n", state);
     fflush(stdout);
+    EICH_MODUS = !EICH_MODUS;
+    if (EICH_MODUS) {
+        int i;
+        for (i = 0; i < 640 * 480; i++) {
+            empty_canvas[i].min = 99999;
+            empty_canvas[i].max = -99999;
+        }
+    }
 }
 
 // Callback for slider
@@ -320,6 +367,14 @@ void modify_depth_mask_multiplier(float slider_val) {
     kb_label_changeText(depth_slider_value, buffer);
 }
 
+void modify_depth_difference_threshold(float slider_val) {
+    printf("Slider at %f percent.\n", slider_val*100.f);
+    DEPTH_MASK_THRESHOLD = slider_val * 100.f;
+
+    char buffer[2048];
+    snprintf(buffer, sizeof(buffer), "%d px", DEPTH_MASK_THRESHOLD);
+    kb_label_changeText(depth_difference_value, buffer);
+}
 
 void kb_poll_events(kb_controls* list) {
     SDL_Event event;
@@ -356,6 +411,12 @@ void kb_poll_events(kb_controls* list) {
                         SDL_Rect chosen_color_rect = { 0, 0, 200, 20 };
                         free(chosen_color_surface);
                         chosen_color_surface = kb_surface_fill_color(&chosen_color_rect, &kb_background_color);
+
+                        printf("eich_werte = min %d, max %d, current %d\n",
+                                empty_canvas[pixelidx].min,
+                                empty_canvas[pixelidx].max,
+                                depth_median_filtered_rgb[pixelidx]
+                                );
                     }
                 }
             break;
@@ -394,6 +455,9 @@ int main(int argc, char *argv[]) {
     depth_mid = (uint8_t*)malloc(640*480*3);
     depth_front = (uint8_t*)malloc(640*480*3);
     depth_median_filtered = (uint8_t*)malloc(640*480);
+    depth_median_filtered_rgb = (uint8_t*)malloc(640*480);
+    masked_depth_mid = (uint8_t*)malloc(640*480*3);
+    masked_depth_front = (uint8_t*)malloc(640*480*3);
     raw_depth_mid = (uint8_t*)malloc(640*480*3);
     raw_depth_front = (uint8_t*)malloc(640*480*3);
 
@@ -471,9 +535,16 @@ int main(int argc, char *argv[]) {
     kb_label_create(list, 5, 580, "Depth multiplier:", slider_label_font);
     depth_slider_value = kb_label_create(list, 500, 580, "0", slider_label_font);
     kb_slider_create(list, 300,25,175,580, &modify_depth_mask_multiplier, .2f);
-    
+
+    // depth difference threshold
+    kb_label_create(list, 5, 620, "Depth difference threshold:", slider_label_font);
+    depth_difference_value = kb_label_create(list, 500, 620, "0", slider_label_font);
+    kb_slider_create(list, 300,25,175,620, &modify_depth_difference_threshold, .0f);
+
+
     kb_image_create("Raw depth image", &raw_depth_front);
     kb_image_create("Median-filtered depth image", &depth_front);
+    kb_image_create("Masked depth image", &masked_depth_front);
     kb_image_create("Raw kinect RGB image", &rgb_front);
 
     SDL_Rect kb_screen_rect = {0,0,SCREEN_WIDTH, SCREEN_HEIGHT};
