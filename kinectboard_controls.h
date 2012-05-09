@@ -62,7 +62,7 @@ void kb_process_keyboard(kb_controls* list, SDLKey key);
                     
 /* ******************************************************************* */
 /* Button */
-typedef void (*kb_button_cb)(void *placeholder);
+typedef void (*kb_button_cb)(uint8_t state);
  
 #pragma pack(push)
 typedef struct

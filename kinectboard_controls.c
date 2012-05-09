@@ -186,7 +186,7 @@ bool kb_process_input(kb_controls* list, uint8_t button, int x, int y)
                 kb_button* btn = (kb_button*)ptr->data;
 		if(__kb_mouse_over(x, y, &btn->box) > 0) {
 		    btn->state = btn->state > 1 ? 0 : 2;
-                    btn->callback(0);
+                    btn->callback(btn->state);
 		    return true;
                 }
             } 
@@ -218,7 +218,7 @@ void kb_process_keyboard(kb_controls* list, SDLKey key) {
                 kb_button* btn = (kb_button*)ptr->data;
 		if(btn->shortcut == key) {
                     btn->state = btn->state > 1 ? 0 : 2;
-		    btn->callback(0);
+		    btn->callback(btn->state);
 		    return;
                 }
             }

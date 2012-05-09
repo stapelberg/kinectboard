@@ -283,8 +283,8 @@ void *freenect_threadfunc(void *arg)
 }
 
 // Callback for button 1
-void btn_test_funct(void* placeholder) {
-    printf("Button pressed\n");
+void toggle_eichen(uint8_t state) {
+    printf("Button pressed, state = %d\n", state);
     fflush(stdout);
 }
 
@@ -455,9 +455,7 @@ int main(int argc, char *argv[]) {
     kb_label_create(list, 10, 10, "blaaaaaaa", font);
     
     // Some Buttons
-    kb_button_create(list,100,25,10,10, &btn_test_funct, SDLK_e, "Eichen (e)", font);
-    kb_button_create(list,100,25,120,10, &btn_test_funct, SDLK_r, "ROFL (r)", font);
-    kb_button_create(list,100,25,230,10, &btn_test_funct, SDLK_t, "Troll (t)", font);
+    kb_button_create(list,100,25,10,10, &toggle_eichen, SDLK_e, "Eichen (e)", font);
     
     // Median pixel values
     kb_label_create(list, 5, 500, "Median pixels:", slider_label_font);
