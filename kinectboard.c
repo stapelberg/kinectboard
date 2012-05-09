@@ -191,14 +191,12 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 	gettimeofday(&currentTime, NULL);
 	currentTimeSeconds = currentTime.tv_sec+(currentTime.tv_usec/1000000.0);
 	if((currentTimeSeconds - lastUpdateSeconds) > 1) {
-		fps = fps+1;
-		printf(" %d \n", fps);
+		fps++;
 		fps = 0;
 		gettimeofday(&lastUpdate, NULL);
 	} else {
-		fps = fps+1;
+		fps++;
 	}
-    printf("depth_cb\n");
     int i, col, row;
     uint16_t *depth = (uint16_t*)v_depth;
 
@@ -300,7 +298,6 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
                 min = depth_median_filtered_masked_rgb[i];
         }
     }
-    printf("min = %d\n", min);
 
     for (row = 0; row < (480); row++) {
         for (col = 0; col < 640; col++) {
@@ -583,19 +580,16 @@ int main(int argc, char *argv[]) {
     SDL_WM_SetCaption("kinectboard", "");
 
     //create Font
-    TTF_Font* font = TTF_OpenFont("/usr/share/fonts/truetype/freefont/FreeMono.ttf", 15);
     TTF_Font *slider_label_font = TTF_OpenFont("/usr/share/fonts/truetype/ttf-bitstream-vera/Vera.ttf", 14);
-    if (!font) {
+    if (!slider_label_font) {
         printf("font not found\n");
         return 1;
     }
 
     kb_controls* list = kb_controls_create();
     
-    kb_label_create(list, 10, 10, "blaaaaaaa", font);
-    
     // Some Buttons
-    kb_button_create(list,100,25,10,10, &toggle_eichen, SDLK_e, "Eichen (e)", font);
+    kb_button_create(list,100,25,10,10, &toggle_eichen, SDLK_e, "Eichen (e)", slider_label_font);
     
     // Median pixel values
     kb_label_create(list, 5, 500, "Median pixels:", slider_label_font);
