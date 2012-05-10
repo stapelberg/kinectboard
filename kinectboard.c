@@ -56,6 +56,14 @@
 #define SCREEN_HEIGHT 480 + 200
 #define SCREEN_DEPTH 32
 
+/* Tauscht den Front- und Mid-Buffer aus */
+#define swap_buffer(name) do { \
+    uint8_t *tmp = name ## _front; \
+    name ## _front = name ## _mid; \
+    name ## _mid = tmp; \
+} while (0)
+
+
 pthread_t freenect_thread;
 volatile int die = 0;
 
@@ -82,11 +90,12 @@ uint8_t *depth_median_filtered_masked_rgb;
 uint8_t *masked_depth_mid, *masked_depth_front;
 // processed and masked depth as an RGB image (masked area retains the depth info)
 uint8_t *masked_depth_detail_mid, *masked_depth_detail_front;
-// Extremitäten erkennen
-uint8_t *extr_mid, *extr_front;
+// Glow area
+uint8_t *glow_mid, *glow_front;
 // raw depth (as received from kinect)
 uint8_t *raw_depth_mid, *raw_depth_front;
 uint8_t *rgb_back, *rgb_mid, *rgb_front;
+uint8_t *rgb_masked_mid, *rgb_masked_front;
 
 GLuint gl_depth_tex;
 GLuint gl_rgb_tex;
@@ -172,10 +181,39 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
         }
     }
 
+    /* RGB-Bild maskieren */
+    int col, row, i;
+    for (row = 0; row < (480); row++) {
+        for (col = 0; col < 640; col++) {
+            i = row * 640 + col;
+
+            int difference = 0;
+            int pvaln = depth_median_filtered_rgb[i];
+            if (pvaln < empty_canvas[i].min) {
+                difference = (empty_canvas[i].min - pvaln);
+                //printf("difference: %d\n", difference);
+            }
+            if (pvaln > empty_canvas[i].max) {
+                //printf("difference: %d\n", (empty_canvas[i].max - pvaln));
+                if ((pvaln - empty_canvas[i].max) > difference)
+                    difference = (pvaln - empty_canvas[i].max);
+            }
+            if (difference <= DEPTH_MASK_THRESHOLD) {
+                rgb_masked_mid[3 * i + 0] = 255;
+                rgb_masked_mid[3 * i + 1] = 0;
+                rgb_masked_mid[3 * i + 2] = 0;
+            } else {
+                rgb_masked_mid[3 * i + 0] = rgb_mid[3 * i + 0];
+                rgb_masked_mid[3 * i + 1] = rgb_mid[3 * i + 1];
+                rgb_masked_mid[3 * i + 2] = rgb_mid[3 * i + 2];
+            }
+
+        }
+    }
+
     /* Buffer austauschen (double-buffering) */
-    uint8_t *tmp = rgb_front;
-    rgb_front = rgb_mid;
-    rgb_mid = tmp;
+    swap_buffer(rgb);
+    swap_buffer(rgb_masked);
 }
 
 #define row_col_to_px(row, col) ((row) * 640 + (col))
@@ -286,54 +324,12 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
         }
     }
 
-    /* Extremitäten erkennen, indem wir den tiefsten Punkt suchen, der binnen
-     * 50 px Radius keinen hellgrauen Punkt hat */
-    int min = INT32_MAX;
-    for (row = 0; row < (480); row++) {
-        for (col = 0; col < 640; col++) {
-            i = row * 640 + col;
-            if (depth_median_filtered_masked_rgb[i] < min)
-                min = depth_median_filtered_masked_rgb[i];
-        }
-    }
-
-    for (row = 0; row < (480); row++) {
-        for (col = 0; col < 640; col++) {
-            i = row * 640 + col;
-            if (abs(depth_median_filtered_masked_rgb[i] - min) < 10) {
-                extr_mid[3 * i + 0] = 0;
-                extr_mid[3 * i + 1] = 0;
-                extr_mid[3 * i + 2] = 255;
-            } else {
-                extr_mid[3 * i + 0] = 0;
-                extr_mid[3 * i + 1] = 0;
-                extr_mid[3 * i + 2] = 0;
-            }
-
-        }
-    }
-
     pthread_mutex_unlock(&median_filter_mutex);
 
-    uint8_t *tmp = depth_front;
-    depth_front = depth_mid;
-    depth_mid = tmp;
-
-    tmp = raw_depth_front;
-    raw_depth_front = raw_depth_mid;
-    raw_depth_mid = tmp;
-
-    tmp = masked_depth_front;
-    masked_depth_front = masked_depth_mid;
-    masked_depth_mid = tmp;
-
-    tmp = masked_depth_detail_front;
-    masked_depth_detail_front = masked_depth_detail_mid;
-    masked_depth_detail_mid = tmp;
-
-    tmp = extr_front;
-    extr_front = extr_mid;
-    extr_mid = tmp;
+    swap_buffer(depth);
+    swap_buffer(raw_depth);
+    swap_buffer(masked_depth);
+    swap_buffer(masked_depth_detail);
 }
 
 void *freenect_threadfunc(void *arg)
@@ -527,14 +523,16 @@ int main(int argc, char *argv[]) {
     masked_depth_front = (uint8_t*)malloc(640*480*3);
     masked_depth_detail_mid = (uint8_t*)malloc(640*480*3);
     masked_depth_detail_front = (uint8_t*)malloc(640*480*3);
-    extr_mid = (uint8_t*)malloc(640*480*3);
-    extr_front = (uint8_t*)malloc(640*480*3);
+    glow_mid = (uint8_t*)malloc(640*480*3);
+    glow_front = (uint8_t*)malloc(640*480*3);
     raw_depth_mid = (uint8_t*)malloc(640*480*3);
     raw_depth_front = (uint8_t*)malloc(640*480*3);
 
     rgb_back = (uint8_t*)malloc(640*480*3);
     rgb_mid = (uint8_t*)malloc(640*480*3);
     rgb_front = (uint8_t*)malloc(640*480*3);
+    rgb_masked_mid = (uint8_t*)malloc(640*480*3);
+    rgb_masked_front = (uint8_t*)malloc(640*480*3);
 
     if (freenect_init(&f_ctx, NULL) < 0) {
         printf("freenect_init() failed\n");
@@ -614,8 +612,9 @@ int main(int argc, char *argv[]) {
     kb_image_create("Median-filtered depth image", &depth_front);
     kb_image_create("Masked depth image", &masked_depth_front);
     kb_image_create("Masked depth detail image", &masked_depth_detail_front);
-    kb_image_create("Extremitäten", &extr_front);
+    kb_image_create("Glowing depth", &glow_front);
     kb_image_create("Raw kinect RGB image", &rgb_front);
+    kb_image_create("Masked kinect RGB image", &rgb_masked_front);
 
     SDL_Rect kb_screen_rect = {0,0,SCREEN_WIDTH, SCREEN_HEIGHT};
     SDL_Color kb_background_color = {0,0,0};
