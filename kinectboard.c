@@ -201,25 +201,10 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
         for (col = 0; col < 640; col++) {
             i = row * 640 + col;
 
-            int difference = 0;
-            int pvaln = depth_median_filtered_rgb[i];
-            if (pvaln < empty_canvas[i].min) {
-                difference = (empty_canvas[i].min - pvaln);
-                //printf("difference: %d\n", difference);
-            }
-            if (pvaln > empty_canvas[i].max) {
-                //printf("difference: %d\n", (empty_canvas[i].max - pvaln));
-                if ((pvaln - empty_canvas[i].max) > difference)
-                    difference = (pvaln - empty_canvas[i].max);
-            }
-            if (difference <= DEPTH_MASK_THRESHOLD) {
-                rgb_masked_mid[3 * i + 0] = 255;
-                rgb_masked_mid[3 * i + 1] = 0;
-                rgb_masked_mid[3 * i + 2] = 0;
+            if (glow_mid[3 * i + 1] != 255 && glow_mid[3 * i + 1] != 0) {
+                pushrgb(rgb_masked, i, rgb_mid[3 * i + 0], rgb_mid[3 * i + 1], rgb_mid[3 * i + 2]);
             } else {
-                rgb_masked_mid[3 * i + 0] = rgb_mid[3 * i + 0];
-                rgb_masked_mid[3 * i + 1] = rgb_mid[3 * i + 1];
-                rgb_masked_mid[3 * i + 2] = rgb_mid[3 * i + 2];
+                pushrgb(rgb_masked, i, 255, 0, 0);
             }
 
         }
@@ -333,6 +318,16 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
                 if (depth_median_filtered[i] >= GLOW_START &&
                     depth_median_filtered[i] <= GLOW_END) {
                     pushrgb(glow, i, pvaln, pvaln, pvaln);
+
+                    /* Glow-Effekt anwenden (einen Block an Pixeln außenrum
+                     * auch markieren) */
+                    int gcol, grow, gi;
+                    for (grow = (row-20); grow < (row+20); grow++) {
+                        for (gcol = (col-20); gcol < (col+20); gcol++) {
+                            gi = grow * 640 + gcol;
+                            pushrgb(glow, gi, glow_mid[3 * i + 0], glow_mid[3 * i + 1], glow_mid[3 * i + 2]);
+                        }
+                    }
                 } else {
                     pushrgb(glow, i, 0, 0, 0);
                 }
