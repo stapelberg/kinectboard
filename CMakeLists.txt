@@ -28,6 +28,7 @@ else()
   find_package(GLUT REQUIRED)
   find_package(SDL REQUIRED)
   find_package(SDL_ttf REQUIRED)
+  find_package(OpenCV COMPONENTS opencv_core REQUIRED)
 
   include(FindPkgConfig)
   pkg_check_modules(FREENECT "libfreenect")
@@ -37,7 +38,7 @@ else()
 
   include_directories(${OPENGL_INCLUDE_DIRS} ${SDL_INCLUDE_DIR} ${SDLTTF_INCLUDE_DIR} ${GLUT_INCLUDE_DIRS} ${USB_INCLUDE_DIRS})
 
-  target_link_libraries(kinectboard freenect ${SDLTTF_LIBRARY} ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
+  target_link_libraries(kinectboard freenect ${OpenCV_LIBS} ${SDLTTF_LIBRARY} ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
 endif()
 
 install (TARGETS kinectboard DESTINATION bin)
