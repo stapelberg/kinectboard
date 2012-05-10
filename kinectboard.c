@@ -188,9 +188,7 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
             distance += (depth_median_filtered[i] / 255.0) * DEPTH_MASK_MULTIPLIER;
 
             if (distance > FILTER_DISTANCE) {
-                rgb_mid[3 * i + 0] = 0;
-                rgb_mid[3 * i + 1] = 0;
-                rgb_mid[3 * i + 2] = 0;
+                pushrgb(rgb, i, 0, 0, 0);
             }
         }
     }
@@ -245,18 +243,14 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
             raw_depth_mid[3*i+1] = depthPixelsLookupNearWhite[depth[i]];
             raw_depth_mid[3*i+2] = depthPixelsLookupNearWhite[depth[i]];
             if (col < MEDIAN_FILTER_SIZE || col > (640 - MEDIAN_FILTER_SIZE)) {
-                depth_mid[3 * i + 0] = 255;
-                depth_mid[3 * i + 1] = 0;
-                depth_mid[3 * i + 2] = 0;
+                pushrgb(depth, i, 255, 0, 0);
                 continue;
             }
             if (row < MEDIAN_FILTER_SIZE || row > (480-MEDIAN_FILTER_SIZE)) {
                 //depth_mid[3 * i + 0] = depthPixelsLookupNearWhite[depth[i]];
                 //depth_mid[3 * i + 1] = depthPixelsLookupNearWhite[depth[i]];
                 //depth_mid[3 * i + 2] = depthPixelsLookupNearWhite[depth[i]];
-                depth_mid[3 * i + 0] = 0;
-                depth_mid[3 * i + 1] = 0;
-                depth_mid[3 * i + 2] = 255;
+                pushrgb(depth, i, 0, 0, 255);
                 continue;
             }
 
@@ -277,9 +271,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
             depth_median_filtered[i] = pvaln;
             pvaln = depthPixelsLookupNearWhite[pvaln];
             depth_median_filtered_rgb[i] = pvaln;
-            depth_mid[3 * i + 0] = pvaln;
-            depth_mid[3 * i + 1] = pvaln;
-            depth_mid[3 * i + 2] = pvaln;
+            pushrgb(depth, i, pvaln, pvaln, pvaln);
 
             if (EICH_MODUS) {
                 if (pvaln < empty_canvas[i].min)
@@ -299,21 +291,15 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
                     difference = (pvaln - empty_canvas[i].max);
             }
             if (difference > DEPTH_MASK_THRESHOLD) {
-                masked_depth_mid[3 * i + 0] = 255;
-                masked_depth_mid[3 * i + 1] = 0;
-                masked_depth_mid[3 * i + 2] = 0;
+                pushrgb(masked_depth, i, 255, 0, 0);
                 depth_median_filtered_masked_rgb[i] = pvaln;
             } else {
-                masked_depth_mid[3 * i + 0] = pvaln;
-                masked_depth_mid[3 * i + 1] = pvaln;
-                masked_depth_mid[3 * i + 2] = pvaln;
+                pushrgb(masked_depth, i, pvaln, pvaln, pvaln);
                 depth_median_filtered_masked_rgb[i] = 255;
             }
 
             if (difference > DEPTH_MASK_THRESHOLD) {
-                masked_depth_detail_mid[3 * i + 0] = pvaln;
-                masked_depth_detail_mid[3 * i + 1] = pvaln;
-                masked_depth_detail_mid[3 * i + 2] = pvaln;
+                pushrgb(masked_depth_detail, i, pvaln, pvaln, pvaln);
 
                 if (depth_median_filtered[i] >= GLOW_START &&
                     depth_median_filtered[i] <= GLOW_END) {
@@ -332,9 +318,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
                     pushrgb(glow, i, 0, 0, 0);
                 }
             } else {
-                masked_depth_detail_mid[3 * i + 0] = 0;
-                masked_depth_detail_mid[3 * i + 1] = 255;
-                masked_depth_detail_mid[3 * i + 2] = 0;
+                pushrgb(masked_depth_detail, i, 0, 255, 0);
                 pushrgb(glow, i, 0, 255, 0);
             }
 
