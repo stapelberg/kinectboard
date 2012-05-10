@@ -31,6 +31,10 @@
 #include <string.h>
 #include <assert.h>
 #include <libfreenect.h>
+#include <stdint.h>
+#include <math.h>
+
+#include <opencv2/core/core_c.h>
 
 #include <pthread.h>
 
@@ -193,6 +197,68 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
         }
     }
 
+    int col, row, i;
+    for (row = 0; row < (480); row++) {
+        for (col = 0; col < 640; col++) {
+            i = row * 640 + col;
+            int depth = masked_depth_detail_mid[3 * i + 0];
+
+            /* Koordinaten umrechnen in Koordinaten auf dem RGB-Bild */
+            double x = ((col - 3.3930780975300314e+02) * depth) / 5.9421434211923247e+02;
+            double y = ((row - 2.4273913761751615e+02) * depth) / 5.9104053696870778e+02;
+            double z = depth;
+
+            /* Rotation und Translation durchführen */
+            CvMat *rotationsmatrix = cvCreateMat(3, 3, CV_32FC1);
+            CV_MAT_ELEM(*rotationsmatrix, float, 0, 0) = 9.9984628826577793e-01;
+            CV_MAT_ELEM(*rotationsmatrix, float, 0, 1) = 1.2635359098409581e-03;
+            CV_MAT_ELEM(*rotationsmatrix, float, 0, 2) = -1.7487233004436643e-02;
+
+            CV_MAT_ELEM(*rotationsmatrix, float, 1, 0) = -1.4779096108364480e-03;
+            CV_MAT_ELEM(*rotationsmatrix, float, 1, 1) = 9.9992385683542895e-01;
+            CV_MAT_ELEM(*rotationsmatrix, float, 1, 2) = -1.2251380107679535e-02;
+
+            CV_MAT_ELEM(*rotationsmatrix, float, 2, 0) = 1.7470421412464927e-02;
+            CV_MAT_ELEM(*rotationsmatrix, float, 2, 1) = 1.2275341476520762e-02;
+            CV_MAT_ELEM(*rotationsmatrix, float, 2, 2) = 9.9977202419716948e-01;
+
+            CvMat *translationsmatrix = cvCreateMat(3, 1, CV_32FC1);
+            CV_MAT_ELEM(*translationsmatrix, float, 0, 0) = 1.9985242312092553e-02;
+            CV_MAT_ELEM(*translationsmatrix, float, 1, 0) = -7.4423738761617583e-04;
+            CV_MAT_ELEM(*translationsmatrix, float, 2, 0) = -1.0916736334336222e-02;
+
+            CvMat *result = cvCreateMat(3, 1, CV_32FC1);
+            CvMat *r2 = cvCreateMat(3, 1, CV_32FC1);
+
+            CvMat *P3D = cvCreateMat(3, 1, CV_32FC1);
+            CV_MAT_ELEM(*P3D, float, 0, 0) = x;
+            CV_MAT_ELEM(*P3D, float, 1, 0) = y;
+            CV_MAT_ELEM(*P3D, float, 2, 0) = z;
+
+            CvMat *P3DT = cvCreateMat(1, 3, CV_32FC1);
+            cvMatMul(rotationsmatrix, P3D, result);
+            cvAdd(result, translationsmatrix, r2, NULL);
+            cvTranspose(r2, P3DT);
+
+            printf("mapped to x = %f, y = %f, depth %f\n",
+                    CV_MAT_ELEM(*P3DT, float, 0, 0),
+                    CV_MAT_ELEM(*P3DT, float, 0, 1),
+                    CV_MAT_ELEM(*P3DT, float, 0, 2));
+            double xb = (CV_MAT_ELEM(*P3DT, float, 0, 0) * 5.2921508098293293e+02 / CV_MAT_ELEM(*P3DT, float, 0, 2)) + 3.2894272028759258e+02;
+            double yb = (CV_MAT_ELEM(*P3DT, float, 0, 1) * 5.2556393630057437e+02 / CV_MAT_ELEM(*P3DT, float, 0, 2)) + 2.6748068171871557e+02;
+
+            printf("depth x %d, y %d -> rgb x %d, y %d\n",
+                    col, row, (int)xb, (int)yb);
+            int di = ((int)yb * 640) + (int)xb;
+            if (glow_mid[3 * i + 1] != 255 && glow_mid[3 * i + 1] != 0) {
+                pushrgb(rgb_masked, di, rgb_mid[3 * i + 0], rgb_mid[3 * i + 1], rgb_mid[3 * i + 2]);
+            } else {
+                pushrgb(rgb_masked, di, 255, 0, 0);
+            }
+        }
+    }
+
+#if 0
     /* RGB-Bild maskieren */
     int col, row, i;
     for (row = 0; row < (480); row++) {
@@ -207,6 +273,7 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 
         }
     }
+#endif
 
     /* Buffer austauschen (double-buffering) */
     swap_buffer(rgb);
