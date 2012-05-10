@@ -53,7 +53,7 @@
 // two kinect images (full resolution) next to each other
 #define SCREEN_WIDTH (640 * 2)
 // kinect image height (480) + space for controls
-#define SCREEN_HEIGHT 480 + 200
+#define SCREEN_HEIGHT 480 + 300
 #define SCREEN_DEPTH 32
 
 /* Tauscht den Front- und Mid-Buffer aus */
@@ -63,6 +63,11 @@
     name ## _mid = tmp; \
 } while (0)
 
+#define pushrgb(name, idx, r, g, b) do { \
+    name ## _mid[3 * idx + 0] = r; \
+    name ## _mid[3 * idx + 1] = g; \
+    name ## _mid[3 * idx + 2] = b; \
+} while (0)
 
 pthread_t freenect_thread;
 volatile int die = 0;
@@ -137,12 +142,21 @@ double FILTER_DISTANCE = 0.2f;
 
 double DEPTH_MASK_MULTIPLIER = 0.0f;
 
-int DEPTH_MASK_THRESHOLD = 0;
+int DEPTH_MASK_THRESHOLD = 2;
+
+/* asta-raum */
+int GLOW_START = 126;
+int GLOW_END = 230;
+
+//int GLOW_START = 0;
+//int GLOW_END = 1024;
 
 kb_label *median_slider_value;
 kb_label *depth_slider_value;
 kb_label *distance_slider_value;
 kb_label *depth_difference_value;
+kb_label *glow_start_value;
+kb_label *glow_end_value;
 
 SDL_Surface *chosen_color_surface;
 
@@ -315,10 +329,18 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
                 masked_depth_detail_mid[3 * i + 0] = pvaln;
                 masked_depth_detail_mid[3 * i + 1] = pvaln;
                 masked_depth_detail_mid[3 * i + 2] = pvaln;
+
+                if (depth_median_filtered[i] >= GLOW_START &&
+                    depth_median_filtered[i] <= GLOW_END) {
+                    pushrgb(glow, i, pvaln, pvaln, pvaln);
+                } else {
+                    pushrgb(glow, i, 0, 0, 0);
+                }
             } else {
                 masked_depth_detail_mid[3 * i + 0] = 0;
                 masked_depth_detail_mid[3 * i + 1] = 255;
                 masked_depth_detail_mid[3 * i + 2] = 0;
+                pushrgb(glow, i, 0, 255, 0);
             }
 
         }
@@ -330,6 +352,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
     swap_buffer(raw_depth);
     swap_buffer(masked_depth);
     swap_buffer(masked_depth_detail);
+    swap_buffer(glow);
 }
 
 void *freenect_threadfunc(void *arg)
@@ -436,6 +459,24 @@ void modify_depth_difference_threshold(float slider_val) {
     char buffer[2048];
     snprintf(buffer, sizeof(buffer), "%d px", DEPTH_MASK_THRESHOLD);
     kb_label_changeText(depth_difference_value, buffer);
+}
+
+void modify_glow_start(float slider_val) {
+    printf("glow start Slider at %f percent.\n", slider_val*100.f);
+    GLOW_START = slider_val * 1024.f;
+
+    char buffer[2048];
+    snprintf(buffer, sizeof(buffer), "%d", GLOW_START);
+    kb_label_changeText(glow_start_value, buffer);
+}
+
+void modify_glow_end(float slider_val) {
+    printf("glow end Slider at %f percent.\n", slider_val*100.f);
+    GLOW_END = slider_val * 1024.f;
+
+    char buffer[2048];
+    snprintf(buffer, sizeof(buffer), "%d", GLOW_END);
+    kb_label_changeText(glow_end_value, buffer);
 }
 
 void kb_poll_events(kb_controls* list) {
@@ -605,8 +646,20 @@ int main(int argc, char *argv[]) {
     // depth difference threshold
     kb_label_create(list, 5, 620, "Depth difference threshold:", slider_label_font);
     depth_difference_value = kb_label_create(list, 500, 620, "0", slider_label_font);
-    kb_slider_create(list, 300,25,175,620, &modify_depth_difference_threshold, .0f);
+    modify_depth_difference_threshold(DEPTH_MASK_THRESHOLD / 100.0);
+    kb_slider_create(list, 300,25,175,620, &modify_depth_difference_threshold, DEPTH_MASK_THRESHOLD);
 
+    // glow area start
+    kb_label_create(list, 5, 660, "Glow area start", slider_label_font);
+    glow_start_value = kb_label_create(list, 500, 660, "0", slider_label_font);
+    modify_glow_start((GLOW_START / 1024.0));
+    kb_slider_create(list, 300,25,175,660, &modify_glow_start, (GLOW_START / 1024.0) * 100);
+
+    // glow area end
+    kb_label_create(list, 5, 700, "Glow area end", slider_label_font);
+    glow_end_value = kb_label_create(list, 500, 700, "1024", slider_label_font);
+    modify_glow_end((GLOW_END / 1024.0));
+    kb_slider_create(list, 300,25,175,700, &modify_glow_end, (GLOW_END / 1024.0) * 100);
 
     kb_image_create("Raw depth image", &raw_depth_front);
     kb_image_create("Median-filtered depth image", &depth_front);
