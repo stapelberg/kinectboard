@@ -56,9 +56,7 @@ void kb_image_create(const char *label, uint8_t **buffer) {
 void kb_images_render(SDL_Surface *screen) {
     int i = 0, cnt = 0;
     SDL_Rect area;
-    kb_image *img;
-    bool once = false;
-    
+    kb_image *img;   
     CIRCLEQ_FOREACH(img, &image_head, image) {
 
        if(animation_step > 0) {
