@@ -24,6 +24,7 @@ static enum {
 
 static int animation_step = 0;
 int ANIMATION_ONE_STEP = 30;
+static int queue_size = 0;
 
 /* ******************************************************************* */
 /* KB (RGB) Image */
@@ -49,24 +50,44 @@ void kb_image_create(const char *label, uint8_t **buffer) {
     else new_img->area = (SDL_Rect){ 0, 0, 640, 480 };
 
     CIRCLEQ_INSERT_TAIL(&image_head, new_img, image);
+    queue_size++;
 }
 
 void kb_images_render(SDL_Surface *screen) {
     int i = 0, cnt = 0;
     SDL_Rect area;
     kb_image *img;
+    bool once = false;
+    
     CIRCLEQ_FOREACH(img, &image_head, image) {
-        if (i++ < startidx)
-            continue;
-        area = img->area;
-        area.x += animation_step;
-        if (animation_direction == A_FROM_RIGHT_TO_LEFT && animation_step > 0) {
+
+       if(animation_step > 0) {
+            if (i++ < startidx-1)
+                continue;
+        } else {
+            if (i++ < startidx)
+                continue;
+        }
+ 
+        if(animation_step > 0 && cnt == 0) {
+            area = img->area;
+            area.x -= (640-animation_step); 
+        } else if(animation_step < 0 && cnt == 2) { 
+            area = img->area;
+            area.x += (640-(-1*animation_step));
+        } else {
+            area = img->area;
+            area.x += animation_step;
+        }
+        
+        if (animation_step > 0) {
             animation_step -= ANIMATION_ONE_STEP;
             if (animation_step < 0)
                 animation_step = 0;
+            
         }
 
-        if (animation_direction == A_FROM_LEFT_TO_RIGHT && animation_step < 0) {
+        if (animation_step < 0) {
             animation_step += ANIMATION_ONE_STEP;
             if (animation_step >= 0)
                 animation_step = 0;
@@ -75,8 +96,12 @@ void kb_images_render(SDL_Surface *screen) {
         memcpy(img->surface->pixels, *(img->buffer), 640 * 480 * 3);
         SDL_BlitSurface(img->labelText, NULL, img->surface, &img->labelTextLocation);
         SDL_BlitSurface(img->surface, NULL, screen, &area);
-        if (++cnt == 2)
-            break;
+        
+        if(animation_step != 0) {
+            if(++cnt == 3) break;
+        } else {
+            if(++cnt == 2) break;
+        }        
     }
 }
 
@@ -87,10 +112,12 @@ static void fix_areas(void) {
     CIRCLEQ_FOREACH(img, &image_head, image) {
         if (i++ < startidx)
             continue;
+    
         img->area = (SDL_Rect){ 0, 0, 640, 480 };
         img = CIRCLEQ_NEXT(img, image);
         if (img)
             img->area = (SDL_Rect){ 640, 0, 640, 480 };
+        
         return;
     }
 }
@@ -107,7 +134,8 @@ void kb_images_scroll_left(void) {
 }
 
 void kb_images_scroll_right(void) {
-    // TODO: verhindern, dass man nach rechts raus-scrolled. passiert aber nichts.
+    if(startidx == queue_size-2)
+        return;
     startidx++;
 
     fix_areas();
