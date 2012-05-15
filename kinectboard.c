@@ -240,15 +240,9 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
             cvAdd(result, translationsmatrix, r2, NULL);
             cvTranspose(r2, P3DT);
 
-            printf("mapped to x = %f, y = %f, depth %f\n",
-                    CV_MAT_ELEM(*P3DT, float, 0, 0),
-                    CV_MAT_ELEM(*P3DT, float, 0, 1),
-                    CV_MAT_ELEM(*P3DT, float, 0, 2));
             double xb = (CV_MAT_ELEM(*P3DT, float, 0, 0) * 5.2921508098293293e+02 / CV_MAT_ELEM(*P3DT, float, 0, 2)) + 3.2894272028759258e+02;
             double yb = (CV_MAT_ELEM(*P3DT, float, 0, 1) * 5.2556393630057437e+02 / CV_MAT_ELEM(*P3DT, float, 0, 2)) + 2.6748068171871557e+02;
 
-            printf("depth x %d, y %d -> rgb x %d, y %d\n",
-                    col, row, (int)xb, (int)yb);
             int di = ((int)yb * 640) + (int)xb;
             if (glow_mid[3 * i + 1] != 255 && glow_mid[3 * i + 1] != 0) {
                 pushrgb(rgb_masked, i, rgb_mid[3 * di + 0], rgb_mid[3 * di + 1], rgb_mid[3 * di + 2]);
