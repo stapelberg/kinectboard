@@ -255,6 +255,13 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
             } else {
                 pushrgb(rgb_masked, di, 255, 0, 0);
             }
+
+            cvReleaseMat(&r2);
+            cvReleaseMat(&P3D);
+            cvReleaseMat(&P3DT);
+            cvReleaseMat(&result);
+            cvReleaseMat(&translationsmatrix);
+            cvReleaseMat(&rotationsmatrix);
         }
     }
 
