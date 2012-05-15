@@ -251,9 +251,9 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
                     col, row, (int)xb, (int)yb);
             int di = ((int)yb * 640) + (int)xb;
             if (glow_mid[3 * i + 1] != 255 && glow_mid[3 * i + 1] != 0) {
-                pushrgb(rgb_masked, di, rgb_mid[3 * i + 0], rgb_mid[3 * i + 1], rgb_mid[3 * i + 2]);
+                pushrgb(rgb_masked, i, rgb_mid[3 * di + 0], rgb_mid[3 * di + 1], rgb_mid[3 * di + 2]);
             } else {
-                pushrgb(rgb_masked, di, 255, 0, 0);
+                pushrgb(rgb_masked, i, 255, 0, 0);
             }
 
             cvReleaseMat(&r2);
