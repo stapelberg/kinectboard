@@ -148,9 +148,13 @@ double DEPTH_MASK_MULTIPLIER = 0.0f;
 
 int DEPTH_MASK_THRESHOLD = 2;
 
-/* asta-raum */
-int GLOW_START = 126;
-int GLOW_END = 230;
+///* asta-raum */
+//int GLOW_START = 126;
+//int GLOW_END = 230;
+
+/* robotik-laber */
+int GLOW_START = 133;
+int GLOW_END = 197;
 
 //int GLOW_START = 0;
 //int GLOW_END = 1024;
@@ -197,51 +201,64 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
         }
     }
 
+    static CvMat *rotationsmatrix = NULL;
+    static CvMat *translationsmatrix = NULL;
+    static CvMat *result = NULL;
+    static CvMat *P3D = NULL;
+    if (!rotationsmatrix) {
+        rotationsmatrix = cvCreateMat(3, 3, CV_32FC1);
+
+        CV_MAT_ELEM(*rotationsmatrix, float, 0, 0) = 9.9984628826577793e-01;
+        CV_MAT_ELEM(*rotationsmatrix, float, 0, 1) = 1.2635359098409581e-03;
+        CV_MAT_ELEM(*rotationsmatrix, float, 0, 2) = -1.7487233004436643e-02;
+
+        CV_MAT_ELEM(*rotationsmatrix, float, 1, 0) = -1.4779096108364480e-03;
+        CV_MAT_ELEM(*rotationsmatrix, float, 1, 1) = 9.9992385683542895e-01;
+        CV_MAT_ELEM(*rotationsmatrix, float, 1, 2) = -1.2251380107679535e-02;
+
+        CV_MAT_ELEM(*rotationsmatrix, float, 2, 0) = 1.7470421412464927e-02;
+        CV_MAT_ELEM(*rotationsmatrix, float, 2, 1) = 1.2275341476520762e-02;
+        CV_MAT_ELEM(*rotationsmatrix, float, 2, 2) = 9.9977202419716948e-01;
+    }
+
+    if (!translationsmatrix) {
+        translationsmatrix = cvCreateMat(3, 1, CV_32FC1);
+
+        CV_MAT_ELEM(*translationsmatrix, float, 0, 0) = 1.9985242312092553e-02;
+        CV_MAT_ELEM(*translationsmatrix, float, 1, 0) = -7.4423738761617583e-04;
+        CV_MAT_ELEM(*translationsmatrix, float, 2, 0) = -1.0916736334336222e-02;
+    }
+
+    if (!P3D)
+        P3D = cvCreateMat(3, 1, CV_32FC1);
+
+    if (!result)
+        result = cvCreateMat(3, 1, CV_32FC1);
+
     int col, row, i;
+    for (i = 0; i < (640*480); i++) {
+        pushrgb(rgb_masked, i, 250, 250, 0);
+    }
     for (row = 0; row < (480); row++) {
         for (col = 0; col < 640; col++) {
             i = row * 640 + col;
-            int depth = masked_depth_detail_mid[3 * i + 0];
+            int depth = glow_mid[3 * i + 0];
+            if (depth == 0)
+                continue;
 
             /* Koordinaten umrechnen in Koordinaten auf dem RGB-Bild */
-            double x = ((col - 3.3930780975300314e+02) * depth) / 5.9421434211923247e+02;
-            double y = ((row - 2.4273913761751615e+02) * depth) / 5.9104053696870778e+02;
-            double z = depth;
+            // X
+            CV_MAT_ELEM(*P3D, float, 0, 0) = ((col - 3.3930780975300314e+02) * depth) / 5.9421434211923247e+02;
+            // Y
+            CV_MAT_ELEM(*P3D, float, 1, 0) = ((row - 2.4273913761751615e+02) * depth) / 5.9104053696870778e+02;
+            // depth
+            CV_MAT_ELEM(*P3D, float, 2, 0) = depth;
 
-            /* Rotation und Translation durchführen */
-            CvMat *rotationsmatrix = cvCreateMat(3, 3, CV_32FC1);
-            CV_MAT_ELEM(*rotationsmatrix, float, 0, 0) = 9.9984628826577793e-01;
-            CV_MAT_ELEM(*rotationsmatrix, float, 0, 1) = 1.2635359098409581e-03;
-            CV_MAT_ELEM(*rotationsmatrix, float, 0, 2) = -1.7487233004436643e-02;
-
-            CV_MAT_ELEM(*rotationsmatrix, float, 1, 0) = -1.4779096108364480e-03;
-            CV_MAT_ELEM(*rotationsmatrix, float, 1, 1) = 9.9992385683542895e-01;
-            CV_MAT_ELEM(*rotationsmatrix, float, 1, 2) = -1.2251380107679535e-02;
-
-            CV_MAT_ELEM(*rotationsmatrix, float, 2, 0) = 1.7470421412464927e-02;
-            CV_MAT_ELEM(*rotationsmatrix, float, 2, 1) = 1.2275341476520762e-02;
-            CV_MAT_ELEM(*rotationsmatrix, float, 2, 2) = 9.9977202419716948e-01;
-
-            CvMat *translationsmatrix = cvCreateMat(3, 1, CV_32FC1);
-            CV_MAT_ELEM(*translationsmatrix, float, 0, 0) = 1.9985242312092553e-02;
-            CV_MAT_ELEM(*translationsmatrix, float, 1, 0) = -7.4423738761617583e-04;
-            CV_MAT_ELEM(*translationsmatrix, float, 2, 0) = -1.0916736334336222e-02;
-
-            CvMat *result = cvCreateMat(3, 1, CV_32FC1);
-            CvMat *r2 = cvCreateMat(3, 1, CV_32FC1);
-
-            CvMat *P3D = cvCreateMat(3, 1, CV_32FC1);
-            CV_MAT_ELEM(*P3D, float, 0, 0) = x;
-            CV_MAT_ELEM(*P3D, float, 1, 0) = y;
-            CV_MAT_ELEM(*P3D, float, 2, 0) = z;
-
-            CvMat *P3DT = cvCreateMat(1, 3, CV_32FC1);
             cvMatMul(rotationsmatrix, P3D, result);
-            cvAdd(result, translationsmatrix, r2, NULL);
-            cvTranspose(r2, P3DT);
+            cvAdd(result, translationsmatrix, result, NULL);
 
-            double xb = (CV_MAT_ELEM(*P3DT, float, 0, 0) * 5.2921508098293293e+02 / CV_MAT_ELEM(*P3DT, float, 0, 2)) + 3.2894272028759258e+02;
-            double yb = (CV_MAT_ELEM(*P3DT, float, 0, 1) * 5.2556393630057437e+02 / CV_MAT_ELEM(*P3DT, float, 0, 2)) + 2.6748068171871557e+02;
+            double xb = (CV_MAT_ELEM(*result, float, 0, 0) * 5.2921508098293293e+02 / CV_MAT_ELEM(*result, float, 2, 0)) + 3.2894272028759258e+02;
+            double yb = (CV_MAT_ELEM(*result, float, 1, 0) * 5.2556393630057437e+02 / CV_MAT_ELEM(*result, float, 2, 0)) + 2.6748068171871557e+02;
 
             int di = ((int)yb * 640) + (int)xb;
             if (glow_mid[3 * i + 1] != 255 && glow_mid[3 * i + 1] != 0) {
@@ -249,13 +266,6 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
             } else {
                 pushrgb(rgb_masked, i, 255, 0, 0);
             }
-
-            cvReleaseMat(&r2);
-            cvReleaseMat(&P3D);
-            cvReleaseMat(&P3DT);
-            cvReleaseMat(&result);
-            cvReleaseMat(&translationsmatrix);
-            cvReleaseMat(&rotationsmatrix);
         }
     }
 
