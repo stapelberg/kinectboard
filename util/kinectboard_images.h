@@ -23,6 +23,10 @@
  * yet implemented).
  *
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+    
 typedef struct kb_image {
     const char *label;
     uint8_t **buffer;
@@ -41,5 +45,8 @@ void kb_images_render(SDL_Surface *screen);
 
 void kb_images_scroll_left(void);
 void kb_images_scroll_right(void);
+#ifdef __cplusplus
+}
+#endif
 
 #endif

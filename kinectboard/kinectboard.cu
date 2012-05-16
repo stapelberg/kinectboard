@@ -591,7 +591,6 @@ void kb_poll_events(kb_controls* list) {
                     kb_process_keyboard(list, event.key.keysym.sym);
                 }
                 break;
-            break;
 	    case SDL_QUIT:
             exit(0);	
         }

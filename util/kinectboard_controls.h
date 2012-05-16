@@ -11,6 +11,10 @@
  #include <SDL/SDL_ttf.h>
  #include <stdbool.h>
  
+#ifdef __cplusplus
+extern "C" {
+#endif
+    
 /* ******************************************************************* */
 /* Utility function */
 SDL_Surface* kb_surface_fill_color(SDL_Rect* box, SDL_Color* color);
@@ -126,5 +130,7 @@ kb_slider* kb_slider_create(kb_controls* list, int width, int height, int xpos, 
 
 // Destroy Slider
 void kb_slider_destroy(kb_controls* list, kb_slider* slider);
-
+#ifdef __cplusplus
+}
+#endif
 #endif
