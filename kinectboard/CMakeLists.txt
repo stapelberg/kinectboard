@@ -39,6 +39,7 @@ else()
   # CUDA Utility flags
   # LINK_LIBRARIES("-L/${CUDA_SDK_ROOT_DIR}/C/lib")
   include_directories(${CUDA_SDK_ROOT_DIR}/C/common/inc)
+  include_directories(${CUDA_SDK_ROOT_DIR}/shared/inc)
 
   include(FindPkgConfig)
   pkg_check_modules(FREENECT "libfreenect")
@@ -49,7 +50,7 @@ else()
   include_directories(../util ../common ${OPENGL_INCLUDE_DIRS} ${SDL_INCLUDE_DIR} ${SDLTTF_INCLUDE_DIR} ${GLUT_INCLUDE_DIRS} ${USB_INCLUDE_DIRS})
 
   CUDA_ADD_EXECUTABLE(kinectboard kinectboard.cu)
-  target_link_libraries(kinectboard freenect opencv_core kinectboard_util ${SDLTTF_LIBRARY} ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
+  target_link_libraries(kinectboard freenect opencv_core kinectboard_util ${CUDA_LIBRARIES} ${SDLTTF_LIBRARY} ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
 endif()
 
 install (TARGETS kinectboard DESTINATION bin)

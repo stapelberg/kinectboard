@@ -54,6 +54,13 @@
 #include "kinectboard_images.h"
 #include <sys/time.h>
 
+// Cuda
+#include <cuda.h>
+#include <drvapi_error_string.h>
+// Shared Utilities (QA Testing)
+#include <shrUtils.h>
+#include <shrQATest.h>
+
 // two kinect images (full resolution) next to each other
 #define SCREEN_WIDTH (640 * 2)
 // kinect image height (480) + space for controls
@@ -147,6 +154,10 @@ double FILTER_DISTANCE = 0.2f;
 double DEPTH_MASK_MULTIPLIER = 0.0f;
 
 int DEPTH_MASK_THRESHOLD = 2;
+
+/* Cuda Device */
+CUdevice dev;
+static int CUDA_CORES = 0;
 
 ///* asta-raum */
 //int GLOW_START = 126;
@@ -597,10 +608,104 @@ void kb_poll_events(kb_controls* list) {
     }		
 }
 
+// get Cuda Attribute
+inline void get_cuda_attrib(int *attribute, CUdevice_attribute device_attribute, int device)
+{
+    CUresult error = 	cuDeviceGetAttribute( attribute, device_attribute, device );
+
+    if( CUDA_SUCCESS != error) {
+        fprintf(stderr, "cuSafeCallNoSync() Driver API error = %04d from file <%s>, line %i.\n",
+                error, __FILE__, __LINE__);
+        exit(-1);
+    }
+}
+
+void query_cuda_device(kb_controls* list) {
+    int deviceCount = 0;
+    int dev = 0, driverVersion = 0, runtimeVersion = 0;     
+    cudaDeviceProp deviceProp;
+    /* init cuda */
+    CUresult error_id = cuInit(0);
+    if (error_id != CUDA_SUCCESS) {
+        printf("cuInit(0) returned %d\n-> %s\n", error_id, getCudaDrvErrorString(error_id));
+        exit(1);
+    }
+
+    error_id = cuDeviceGetCount(&deviceCount);
+    if (error_id != CUDA_SUCCESS) {
+        printf( "cuDeviceGetCount returned %d\n-> %s\n", (int)error_id, getCudaDrvErrorString(error_id) );
+        exit(1);
+    }
+        
+    TTF_Font *cuda_font = TTF_OpenFont("/usr/share/fonts/truetype/ttf-bitstream-vera/VeraMono.ttf", 14);
+    if (!cuda_font) {
+        printf("font ttf-bitstream-vera-mono not found\n");
+        exit(1);
+    }
+    
+    /* Query Cuda Device */
+    cudaGetDeviceProperties(&deviceProp, dev);
+
+    char buf[256];
+    
+    sprintf(buf, "Device %d: \"%s\":", dev, deviceProp.name);
+    kb_label_create(list, 640, 538, buf, cuda_font);
+    printf("%s\n", buf);
+
+    #if CUDART_VERSION >= 2020
+    // Console log
+    cudaDriverGetVersion(&driverVersion);
+    cudaRuntimeGetVersion(&runtimeVersion);
+    
+    
+    sprintf(buf, "CUDA Driver Version / Runtime Version         %d.%d / %d.%d", 
+            driverVersion/1000, (driverVersion%100)/10, runtimeVersion/1000, (runtimeVersion%100)/10);
+    kb_label_create(list, 640, 560, buf, cuda_font);
+    printf("%s\n", buf);
+    
+    #endif
+    sprintf(buf, "CUDA Capability Major/Minor version number:   %d.%d", deviceProp.major, deviceProp.minor);
+    kb_label_create(list, 640, 582, buf, cuda_font);
+    printf("%s\n", buf);
+    
+    sprintf(buf, "Total amount of global memory:                %.0f MBytes (%llu bytes)", 
+          (float)deviceProp.totalGlobalMem/1048576.0f, (unsigned long long) deviceProp.totalGlobalMem);
+    kb_label_create(list, 640, 604, buf, cuda_font);
+    printf("%s\n", buf);
+    
+    #if CUDART_VERSION >= 2000
+    sprintf(buf, "(%2d) Multiprocessors x (%3d) CUDA Cores/MP:   %d CUDA Cores", 
+            deviceProp.multiProcessorCount,
+            ConvertSMVer2Cores(deviceProp.major, deviceProp.minor),
+            ConvertSMVer2Cores(deviceProp.major, deviceProp.minor) * deviceProp.multiProcessorCount);
+    CUDA_CORES = ConvertSMVer2Cores(deviceProp.major, deviceProp.minor) * deviceProp.multiProcessorCount;
+
+    kb_label_create(list, 640, 626, buf, cuda_font);
+    printf("%s\n", buf);
+            
+    #endif
+    sprintf(buf, "GPU Clock rate:                               %.0f MHz (%0.2f GHz)", 
+            deviceProp.clockRate * 1e-3f, deviceProp.clockRate * 1e-6f);
+    kb_label_create(list, 640, 648, buf, cuda_font);
+    printf("%s\n", buf);
+    
+    int memoryClock;
+    get_cuda_attrib( &memoryClock, CU_DEVICE_ATTRIBUTE_MEMORY_CLOCK_RATE, dev );
+    sprintf(buf, "Memory Clock rate:                            %.0f Mhz", memoryClock * 1e-3f);
+    kb_label_create(list, 640, 670, buf, cuda_font);
+    printf("%s\n", buf);
+    
+    int memBusWidth;
+    get_cuda_attrib( &memBusWidth, CU_DEVICE_ATTRIBUTE_GLOBAL_MEMORY_BUS_WIDTH, dev );
+    sprintf(buf, "Memory Bus Width:                             %d-bit", memBusWidth);
+    kb_label_create(list, 640, 692, buf, cuda_font);
+    printf("%s\n", buf);  
+     
+}
 int main(int argc, char *argv[]) {
 
     SDL_Surface *screen;
-
+    
     int i;
     for (i=0; i<2048; i++) {
         //const float k1 = 1.1863;
@@ -611,6 +716,7 @@ int main(int argc, char *argv[]) {
         depthPixelsLookupNearWhite[i] = (float) (2048 * 256) / (i - 2048);
     }
 
+    
     depth_mid = (uint8_t*)malloc(640*480*3);
     depth_front = (uint8_t*)malloc(640*480*3);
     depth_median_filtered = (uint8_t*)malloc(640*480);
@@ -630,12 +736,15 @@ int main(int argc, char *argv[]) {
     rgb_front = (uint8_t*)malloc(640*480*3);
     rgb_masked_mid = (uint8_t*)malloc(640*480*3);
     rgb_masked_front = (uint8_t*)malloc(640*480*3);
+    
 
+    /* init freenect */
+    
     if (freenect_init(&f_ctx, NULL) < 0) {
         printf("freenect_init() failed\n");
         return 1;
     }
-
+    
     freenect_set_log_level(f_ctx, FREENECT_LOG_DEBUG);
     freenect_select_subdevices(f_ctx, (freenect_device_flags)(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
 
@@ -675,7 +784,7 @@ int main(int argc, char *argv[]) {
     //create Font
     TTF_Font *slider_label_font = TTF_OpenFont("/usr/share/fonts/truetype/ttf-bitstream-vera/Vera.ttf", 14);
     if (!slider_label_font) {
-        printf("font not found\n");
+        printf("font ttf-bitstream-vera not found\n");
         return 1;
     }
 
@@ -738,7 +847,9 @@ int main(int argc, char *argv[]) {
     /*FPS Anzeige*/
     char fpsBuffer[2048];
     kb_label* fpsLabel = kb_label_create(list, 1010, 500, "? FPS", slider_label_font);
-
+    
+    query_cuda_device(list);
+    
     while (1) {
         /* Schwarzer Hintergrund */
         SDL_BlitSurface(kb_background, NULL, screen, &kb_screen_rect);
