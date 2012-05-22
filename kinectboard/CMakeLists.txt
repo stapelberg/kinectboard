@@ -33,8 +33,6 @@ else()
 
   set(CMAKE_C_FLAGS "-Wall -g -O3")
 
-  # CUDA NVCC Flags
-  set(CUDA_NVCC_FLAGS "--compiler-bindir /usr/bin/gcc-4.4;--library-path ${CMAKE_SOURCE_DIR}/lib") 
   
   # CUDA Utility flags
   # LINK_LIBRARIES("-L/${CUDA_SDK_ROOT_DIR}/C/lib")
@@ -43,6 +41,9 @@ else()
 
   include(FindPkgConfig)
   pkg_check_modules(FREENECT "libfreenect")
+
+  # CUDA NVCC Flags
+  set(CUDA_NVCC_FLAGS "--compiler-bindir" "/usr/bin/gcc-4.4" "--library-path" "${CMAKE_SOURCE_DIR}/lib" ${FREENECT_CFLAGS}) 
 
   add_definitions(${FREENECT_CFLAGS})
   link_libraries(${FREENECT_LDFLAGS})
