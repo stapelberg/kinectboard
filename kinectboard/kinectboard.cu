@@ -48,7 +48,7 @@
 #include <math.h>
 
 #define elem_type int
-#include "quickselect.c"
+#include "quickselect.cu"
 
 #include "kinectboard_controls.h"
 #include "kinectboard_images.h"
@@ -304,9 +304,71 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 
 #define row_col_to_px(row, col) ((row) * 640 + (col))
 
+// must be a multiple of 16
+#define GRID_X 40
+#define GRID_Y 32
+
+// must be a multiple of 8
+#define BLOCK_X 16
+#define BLOCK_Y 15
+
 static time_t last_time;
 int fps = 0;
 int frames = 0;
+
+__global__ void median_filter_gpu(uint16_t *depth, uint8_t *output_mid, uint8_t *table) {
+    int row, col;
+    int i;
+
+// FUUUU
+    int nneighbors[5 * 5];
+
+    int d_MEDIAN_FILTER_SIZE = 5;
+
+    for (row = 0; row < (480 / (GRID_Y * BLOCK_Y)); row++) {
+        for (col = 0; col < (640 / (GRID_X * BLOCK_X)); col++) {
+            int x = (blockIdx.x * (640/GRID_X)) + (threadIdx.x * (640/GRID_X/BLOCK_X)) + col;
+            int y = (blockIdx.y * (480/GRID_Y)) + (threadIdx.y * (480/GRID_Y/BLOCK_Y)) + row;
+            i = (y * 640) + x;
+            //output[3 * i + 0] = table[depth[i]];
+            //output[3 * i + 1] = table[depth[i]];
+            //output[3 * i + 2] = table[depth[i]];
+
+            if (x < d_MEDIAN_FILTER_SIZE || x > (640 - d_MEDIAN_FILTER_SIZE)) {
+                pushrgb(output, i, 255, 0, 0);
+                continue;
+            }
+            if (y < d_MEDIAN_FILTER_SIZE || y > (480 - d_MEDIAN_FILTER_SIZE)) {
+                //depth_mid[3 * i + 0] = depthPixelsLookupNearWhite[depth[i]];
+                //depth_mid[3 * i + 1] = depthPixelsLookupNearWhite[depth[i]];
+                //depth_mid[3 * i + 2] = depthPixelsLookupNearWhite[depth[i]];
+                pushrgb(output, i, 0, 0, 255);
+                continue;
+            }
+
+            int ic, ir;
+            int ni = 0;
+            for (ic = (x - (d_MEDIAN_FILTER_SIZE / 2));
+                 ic <= (x + (d_MEDIAN_FILTER_SIZE / 2));
+                 ic++) {
+                for (ir = (y - (d_MEDIAN_FILTER_SIZE / 2));
+                     ir <= (y + (d_MEDIAN_FILTER_SIZE / 2));
+                     ir++) {
+                    nneighbors[ni++] = depth[row_col_to_px(ir, ic)];
+                }
+
+            }
+
+            int pvaln = quick_select(nneighbors, ni);
+            //depth_median_filtered[i] = pvaln;
+            pvaln = table[pvaln];
+            //depth_median_filtered_rgb[i] = pvaln;
+            pushrgb(output, i, pvaln, pvaln, pvaln);
+
+        }
+    }
+
+}
 
 void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 {
@@ -325,8 +387,37 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
     pthread_mutex_lock(&median_filter_mutex);
     int nneighbors[MEDIAN_FILTER_SIZE * MEDIAN_FILTER_SIZE];
 
+    /* depth in den Speicher der GPU kopieren */
+    static uint16_t *gpu_depth = NULL;
+    static uint8_t *gpu_output = NULL;
+    static uint8_t *gpu_table = NULL;
+    if (!gpu_depth)
+        cudaMalloc(&gpu_depth, 640*480 * sizeof(uint16_t));
+    if (!gpu_output)
+        cudaMalloc(&gpu_output, 640*480*3);
+    if (!gpu_table) {
+        cudaMalloc(&gpu_table, 2048);
+        cudaMemcpy(gpu_table, depthPixelsLookupNearWhite, 2048, cudaMemcpyHostToDevice);
+    }
+    cudaMemcpy(gpu_depth, depth, 640*480 * sizeof(uint16_t), cudaMemcpyHostToDevice);
+
+    // blocksize vielfaches von 8
+    // gridsize vielfaches von 16
+    dim3 blocksize(BLOCK_X, BLOCK_Y);
+    dim3 gridsize(GRID_X, GRID_Y);
+
+    median_filter_gpu<<<gridsize, blocksize>>>(gpu_depth, gpu_output, gpu_table);
+
+    cudaThreadSynchronize();
+
+    cudaMemcpy(raw_depth_mid, gpu_output, 640*480*3, cudaMemcpyDeviceToHost);
+    //memset(raw_depth_mid, 192, 640*480*3);
+
+
     for (row = 0; row < (480); row++) {
         for (col = 0; col < 640; col++) {
+
+#if 0
             i = row * 640 + col;
             raw_depth_mid[3*i+0] = depthPixelsLookupNearWhite[depth[i]];
             raw_depth_mid[3*i+1] = depthPixelsLookupNearWhite[depth[i]];
@@ -361,6 +452,9 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
             pvaln = depthPixelsLookupNearWhite[pvaln];
             depth_median_filtered_rgb[i] = pvaln;
             pushrgb(depth, i, pvaln, pvaln, pvaln);
+#endif
+
+#if 0
 
             if (EICH_MODUS) {
                 if (pvaln < empty_canvas[i].min)
@@ -411,6 +505,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
                 pushrgb(glow, i, 0, 255, 0);
             }
 
+#endif
         }
     }
 
@@ -637,7 +732,7 @@ void query_cuda_device(kb_controls* list) {
         exit(1);
     }
         
-    TTF_Font *cuda_font = TTF_OpenFont("/usr/share/fonts/truetype/ttf-bitstream-vera/VeraMono.ttf", 14);
+    TTF_Font *cuda_font = TTF_OpenFont("Vera.ttf", 14);
     if (!cuda_font) {
         printf("font ttf-bitstream-vera-mono not found\n");
         exit(1);
@@ -782,7 +877,7 @@ int main(int argc, char *argv[]) {
     SDL_WM_SetCaption("kinectboard", "");
 
     //create Font
-    TTF_Font *slider_label_font = TTF_OpenFont("/usr/share/fonts/truetype/ttf-bitstream-vera/Vera.ttf", 14);
+    TTF_Font *slider_label_font = TTF_OpenFont("Vera.ttf", 14);
     if (!slider_label_font) {
         printf("font ttf-bitstream-vera not found\n");
         return 1;

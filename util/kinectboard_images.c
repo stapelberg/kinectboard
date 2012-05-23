@@ -35,7 +35,7 @@ void kb_image_create(const char *label, uint8_t **buffer) {
     new_img->buffer = buffer;
     new_img->surface = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 480, 24, RMASK, GMASK, BMASK, 0);
     
-    TTF_Font* label_font = TTF_OpenFont("/usr/share/fonts/truetype/ttf-bitstream-vera/Vera.ttf", 28);
+    TTF_Font* label_font = TTF_OpenFont("Vera.ttf", 28);
 	SDL_Color color = (SDL_Color){255,255,255};
 	new_img->labelText = TTF_RenderText_Solid(label_font, new_img->label, color);
 	new_img->labelTextLocation = (SDL_Rect){ 120, 5,10,10 };
