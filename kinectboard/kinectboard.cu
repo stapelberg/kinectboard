@@ -159,6 +159,8 @@ int DEPTH_MASK_THRESHOLD = 2;
 CUdevice dev;
 static int CUDA_CORES = 0;
 
+texture<uint16_t, 2> texRef;
+
 ///* asta-raum */
 //int GLOW_START = 126;
 //int GLOW_END = 230;
@@ -354,7 +356,7 @@ __global__ void median_filter_gpu(uint16_t *depth, uint8_t *output_mid, uint8_t 
                 for (ir = (y - (d_MEDIAN_FILTER_SIZE / 2));
                      ir <= (y + (d_MEDIAN_FILTER_SIZE / 2));
                      ir++) {
-                    nneighbors[ni++] = depth[row_col_to_px(ir, ic)];
+                    nneighbors[ni++] = tex2D(texRef, ic, ir);
                 }
 
             }
@@ -391,8 +393,15 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
     static uint16_t *gpu_depth = NULL;
     static uint8_t *gpu_output = NULL;
     static uint8_t *gpu_table = NULL;
-    if (!gpu_depth)
+    if (!gpu_depth) {
         cudaMalloc(&gpu_depth, 640*480 * sizeof(uint16_t));
+        cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<uint16_t>();
+        cudaError_t err = cudaBindTexture2D(NULL, &texRef, gpu_depth, &channelDesc, 640, 480, 640 * 2);
+        if (err != cudaSuccess) {
+            printf("nope: %s.\n", cudaGetErrorString(err));
+            exit(1);
+        }
+    }
     if (!gpu_output)
         cudaMalloc(&gpu_output, 640*480*3);
     if (!gpu_table) {
@@ -840,7 +849,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    freenect_set_log_level(f_ctx, FREENECT_LOG_DEBUG);
+    //freenect_set_log_level(f_ctx, FREENECT_LOG_DEBUG);
     freenect_select_subdevices(f_ctx, (freenect_device_flags)(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
 
     int nr_devices = freenect_num_devices (f_ctx);
