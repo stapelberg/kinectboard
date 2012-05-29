@@ -389,6 +389,9 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
     pthread_mutex_lock(&median_filter_mutex);
     int nneighbors[MEDIAN_FILTER_SIZE * MEDIAN_FILTER_SIZE];
 
+    struct timeval begin, end;
+    gettimeofday(&begin, NULL);
+
     /* depth in den Speicher der GPU kopieren */
     static uint16_t *gpu_depth = NULL;
     static uint8_t *gpu_output = NULL;
@@ -419,7 +422,16 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 
     // memcpy implicitly synchronizes
     cudaMemcpy(raw_depth_mid, gpu_output, 640*480*3, cudaMemcpyDeviceToHost);
+    gettimeofday(&end, NULL);
     //memset(raw_depth_mid, 192, 640*480*3);
+
+    if (end.tv_usec < begin.tv_usec) {
+        end.tv_usec += 1000000;
+        begin.tv_sec += 1;
+    }
+    size_t usecs = (end.tv_sec - begin.tv_sec) * 1000000;
+    usecs += (end.tv_usec - begin.tv_usec);
+    printf("usecs = %d\n", usecs);
 
 
     for (row = 0; row < (480); row++) {
