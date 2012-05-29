@@ -417,8 +417,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 
     median_filter_gpu<<<gridsize, blocksize>>>(gpu_depth, gpu_output, gpu_table);
 
-    cudaThreadSynchronize();
-
+    // memcpy implicitly synchronizes
     cudaMemcpy(raw_depth_mid, gpu_output, 640*480*3, cudaMemcpyDeviceToHost);
     //memset(raw_depth_mid, 192, 640*480*3);
 
