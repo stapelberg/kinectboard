@@ -57,6 +57,9 @@
 // Cuda
 #include <cuda.h>
 #include <drvapi_error_string.h>
+// undefine macros which are in OpenCV *and* CUDA
+#undef MAX
+#undef MIN
 // Shared Utilities (QA Testing)
 #include <shrUtils.h>
 #include <shrQATest.h>
@@ -157,7 +160,7 @@ int DEPTH_MASK_THRESHOLD = 2;
 
 /* Cuda Device */
 CUdevice dev;
-static int CUDA_CORES = 0;
+//static int CUDA_CORES = 0;
 
 texture<uint16_t, 2> texRef;
 
@@ -214,6 +217,7 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
         }
     }
 
+#if 0
     static CvMat *rotationsmatrix = NULL;
     static CvMat *translationsmatrix = NULL;
     static CvMat *result = NULL;
@@ -281,7 +285,7 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
             }
         }
     }
-
+#endif
 #if 0
     /* RGB-Bild maskieren */
     int col, row, i;
@@ -383,11 +387,11 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
         frames++;
     }
 
-    int i, col, row;
+    //int col, row;
     uint16_t *depth = (uint16_t*)v_depth;
 
-    pthread_mutex_lock(&median_filter_mutex);
-    int nneighbors[MEDIAN_FILTER_SIZE * MEDIAN_FILTER_SIZE];
+    //pthread_mutex_lock(&median_filter_mutex);
+    //int nneighbors[MEDIAN_FILTER_SIZE * MEDIAN_FILTER_SIZE];
 
     struct timeval begin, end;
     gettimeofday(&begin, NULL);
@@ -421,7 +425,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
     median_filter_gpu<<<gridsize, blocksize>>>(gpu_depth, gpu_output, gpu_table);
 
     // memcpy implicitly synchronizes
-    cudaMemcpy(raw_depth_mid, gpu_output, 640*480*3, cudaMemcpyDeviceToHost);
+    cudaMemcpy(depth_mid, gpu_output, 640*480*3, cudaMemcpyDeviceToHost);
     gettimeofday(&end, NULL);
     //memset(raw_depth_mid, 192, 640*480*3);
 
@@ -434,8 +438,10 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
     printf("usecs = %d\n", usecs);
 
 
+#if 0
     for (row = 0; row < (480); row++) {
         for (col = 0; col < 640; col++) {
+#endif
 
 #if 0
             i = row * 640 + col;
@@ -526,10 +532,12 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
             }
 
 #endif
+#if 0
         }
     }
+#endif
 
-    pthread_mutex_unlock(&median_filter_mutex);
+    //pthread_mutex_unlock(&median_filter_mutex);
 
     swap_buffer(depth);
     swap_buffer(raw_depth);
@@ -793,7 +801,7 @@ void query_cuda_device(kb_controls* list) {
             deviceProp.multiProcessorCount,
             ConvertSMVer2Cores(deviceProp.major, deviceProp.minor),
             ConvertSMVer2Cores(deviceProp.major, deviceProp.minor) * deviceProp.multiProcessorCount);
-    CUDA_CORES = ConvertSMVer2Cores(deviceProp.major, deviceProp.minor) * deviceProp.multiProcessorCount;
+    //CUDA_CORES = ConvertSMVer2Cores(deviceProp.major, deviceProp.minor) * deviceProp.multiProcessorCount;
 
     kb_label_create(list, 640, 626, buf, cuda_font);
     printf("%s\n", buf);
