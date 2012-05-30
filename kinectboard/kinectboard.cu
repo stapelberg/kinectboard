@@ -322,7 +322,7 @@ static time_t last_time;
 int fps = 0;
 int frames = 0;
 
-__global__ void median_filter_gpu(uint16_t *depth, uint8_t *output_mid, uint8_t *table) {
+__global__ void median_filter_gpu(uint16_t *depth, uint8_t *output_mid, uint8_t *output_raw_depth, uint8_t *table) {
     int row, col;
     int i;
 
@@ -333,12 +333,13 @@ __global__ void median_filter_gpu(uint16_t *depth, uint8_t *output_mid, uint8_t 
 
     for (row = 0; row < (480 / (GRID_Y * BLOCK_Y)); row++) {
         for (col = 0; col < (640 / (GRID_X * BLOCK_X)); col++) {
-            int x = (blockIdx.x * (640/GRID_X)) + (threadIdx.x * (640/GRID_X/BLOCK_X)) + col;
-            int y = (blockIdx.y * (480/GRID_Y)) + (threadIdx.y * (480/GRID_Y/BLOCK_Y)) + row;
+            const int x = (blockIdx.x * (640/GRID_X)) + (threadIdx.x * (640/GRID_X/BLOCK_X)) + col;
+            const int y = (blockIdx.y * (480/GRID_Y)) + (threadIdx.y * (480/GRID_Y/BLOCK_Y)) + row;
             i = (y * 640) + x;
-            //output[3 * i + 0] = table[depth[i]];
-            //output[3 * i + 1] = table[depth[i]];
-            //output[3 * i + 2] = table[depth[i]];
+            uint8_t dval = table[depth[i]];
+            output_raw_depth[3 * i + 0] = dval;
+            output_raw_depth[3 * i + 1] = dval;
+            output_raw_depth[3 * i + 2] = dval;
 
             if (x < d_MEDIAN_FILTER_SIZE || x > (640 - d_MEDIAN_FILTER_SIZE)) {
                 pushrgb(output, i, 255, 0, 0);
@@ -398,6 +399,7 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 
     /* depth in den Speicher der GPU kopieren */
     static uint16_t *gpu_depth = NULL;
+    static uint8_t *gpu_raw_depth = NULL;
     static uint8_t *gpu_output = NULL;
     static uint8_t *gpu_table = NULL;
     if (!gpu_depth) {
@@ -409,6 +411,8 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
             exit(1);
         }
     }
+    if (!gpu_raw_depth)
+        cudaMalloc(&gpu_raw_depth, 640*480 * 3);
     if (!gpu_output)
         cudaMalloc(&gpu_output, 640*480*3);
     if (!gpu_table) {
@@ -422,10 +426,11 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
 
-    median_filter_gpu<<<gridsize, blocksize>>>(gpu_depth, gpu_output, gpu_table);
+    median_filter_gpu<<<gridsize, blocksize>>>(gpu_depth, gpu_output, gpu_raw_depth, gpu_table);
 
     // memcpy implicitly synchronizes
     cudaMemcpy(depth_mid, gpu_output, 640*480*3, cudaMemcpyDeviceToHost);
+    cudaMemcpy(raw_depth_mid, gpu_raw_depth, 640*480*3, cudaMemcpyDeviceToHost);
     gettimeofday(&end, NULL);
     //memset(raw_depth_mid, 192, 640*480*3);
 
@@ -441,9 +446,6 @@ void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp)
 #if 0
     for (row = 0; row < (480); row++) {
         for (col = 0; col < 640; col++) {
-#endif
-
-#if 0
             i = row * 640 + col;
             raw_depth_mid[3*i+0] = depthPixelsLookupNearWhite[depth[i]];
             raw_depth_mid[3*i+1] = depthPixelsLookupNearWhite[depth[i]];
