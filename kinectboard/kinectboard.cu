@@ -33,8 +33,9 @@
 #include <libfreenect.h>
 #include <stdint.h>
 #include <math.h>
-
-#include <opencv2/core/core_c.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <pthread.h>
 
@@ -63,6 +64,9 @@
 // Shared Utilities (QA Testing)
 #include <shrUtils.h>
 #include <shrQATest.h>
+
+#undef __SSE2__
+#include <opencv2/core/core_c.h>
 
 // two kinect images (full resolution) next to each other
 #define SCREEN_WIDTH (640 * 2)
