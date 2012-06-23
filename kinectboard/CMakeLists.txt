@@ -48,6 +48,10 @@ else()
   add_definitions(${FREENECT_CFLAGS})
   link_libraries(${FREENECT_LDFLAGS})
 
+  pkg_check_modules(GLEW "glew")
+  add_definitions(${GLEW_CFLAGS})
+  link_libraries(${GLEW_LDFLAGS})
+
   include_directories(../util ../common ${OPENGL_INCLUDE_DIRS} ${SDL_INCLUDE_DIR} ${SDLTTF_INCLUDE_DIR} ${GLUT_INCLUDE_DIRS} ${USB_INCLUDE_DIRS})
 
   CUDA_ADD_EXECUTABLE(kinectboard kinectboard.cu)
