@@ -333,8 +333,7 @@ static time_t last_time;
 int fps = 0;
 int frames = 0;
 
-__global__ void median_filter_gpu(uint16_t *depth, uint8_t *table, uint8_t *out2) {
-#if 0
+__global__ void median_filter_gpu(uint16_t *depth, uint8_t *table, uchar4 *out2) {
     int row, col;
     int i;
 
@@ -342,19 +341,26 @@ __global__ void median_filter_gpu(uint16_t *depth, uint8_t *table, uint8_t *out2
     int nneighbors[5 * 5];
 
     int d_MEDIAN_FILTER_SIZE = 5;
+    for (i = 0; i < (640*480); i++) {
+        out2[i].w = 0;
+        out2[i].x = 255;
+        out2[i].y = 0;
+        out2[i].z = 0;
+    }
 
+#if 0
     for (row = 0; row < (480 / (GRID_Y * BLOCK_Y)); row++) {
         for (col = 0; col < (640 / (GRID_X * BLOCK_X)); col++) {
             const int x = (blockIdx.x * (640/GRID_X)) + (threadIdx.x * (640/GRID_X/BLOCK_X)) + col;
             const int y = (blockIdx.y * (480/GRID_Y)) + (threadIdx.y * (480/GRID_Y/BLOCK_Y)) + row;
             i = (y * 640) + x;
             //uint8_t dval = 127;
-            uint8_t dval = table[depth[i]];
+            //uint8_t dval = table[depth[i]];
 
-            output_buffer[i].w = 0;
-            output_buffer[i].x = dval;
-            output_buffer[i].y = dval;
-            output_buffer[i].z = dval;
+            out2[i].w = 0;
+            out2[i].x = 255;
+            out2[i].y = 0;
+            out2[i].z = 0;
 
 #if 0
             output_raw_depth[3 * i + 0] = dval;
@@ -395,6 +401,7 @@ __global__ void median_filter_gpu(uint16_t *depth, uint8_t *table, uint8_t *out2
 
         }
     }
+
 #endif
 }
 
@@ -844,6 +851,7 @@ int main(int argc, char *argv[]) {
 
     /* init freenect */
     
+#if 0
     if (freenect_init(&f_ctx, NULL) < 0) {
         printf("freenect_init() failed\n");
         return 1;
@@ -869,7 +877,7 @@ int main(int argc, char *argv[]) {
         freenect_shutdown(f_ctx);
         return 1;
     }
-
+#endif
     /* Initialize SDL */
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
@@ -913,13 +921,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+#if 0
     int res = pthread_create(&freenect_thread, NULL, freenect_threadfunc, NULL);
     if (res) {
         printf("pthread_create failed\n");
         freenect_shutdown(f_ctx);
         return 1;
     }
-
+#endif
 
     kb_controls* list = kb_controls_create();
     
@@ -1067,7 +1076,7 @@ int main(int argc, char *argv[]) {
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
 
-    median_filter_gpu<<<1, 1>>>(gpu_depth, gpu_table, gpu_out2);
+    median_filter_gpu<<<1, 1>>>(gpu_depth, gpu_table, gpu_output);
 
     //cudaThreadSynchronize();
     cudaMemcpy(masked_depth_mid, gpu_out2, 640*480*3, cudaMemcpyDeviceToHost);
