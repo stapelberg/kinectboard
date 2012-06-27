@@ -4,18 +4,18 @@
 
 #include <cuda.h>
 
-#define GRID_X 20
-#define GRID_Y 15
+#define GRID_X 40
+#define GRID_Y 32
 
-#define BLOCK_X 32
-#define BLOCK_Y 32
+#define BLOCK_X 16
+#define BLOCK_Y 15
 
 texture<uint16_t, 2> gpu_depth_tex;
 static uint16_t *gpu_depth;
 
 __global__ void median_filter_gpu(uint16_t *gpu_depth, uchar4 *gpu_output) {
-    const int x = (blockIdx.x * (640/GRID_X)) + (threadIdx.x * (640/GRID_X/BLOCK_X)) + 0;
-    const int y = (blockIdx.y * (480/GRID_Y)) + (threadIdx.y * (480/GRID_Y/BLOCK_Y)) + 0;
+    const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     const int i = (y * 640) + x;
 
     float nneighbors[9] = {
@@ -70,6 +70,8 @@ void median_filter(uint16_t *host_depth, uchar4 *gpu_output) {
     cudaMemcpy(gpu_depth, host_depth, 640 * 480 * sizeof(uint16_t), cudaMemcpyHostToDevice);
 
     median_filter_gpu<<<gridsize, blocksize>>>(gpu_depth, gpu_output);
+    if (cudaGetLastError() != cudaSuccess)
+        printf("Could not call kernel. Wrong gridsize/blocksize?\n");
 
     cudaThreadSynchronize();
 }
