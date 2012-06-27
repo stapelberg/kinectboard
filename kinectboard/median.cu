@@ -45,11 +45,9 @@ __global__ void median_filter_gpu(uint16_t *gpu_depth, uchar4 *gpu_output) {
     int pvaln = (2048.0f * 256.0f) / (nneighbors[9/2] - 2048.0f);
 
     gpu_output[i].w = 0;
-    gpu_output[i].x = 255;
-    gpu_output[i].y = 0;
-    gpu_output[i].z = 0;
-
-    //pushrgb(output, i, pvaln, pvaln, pvaln);
+    gpu_output[i].x = pvaln;
+    gpu_output[i].y = pvaln;
+    gpu_output[i].z = pvaln;
 }
 
 void median_filter_init(void) {

@@ -51,6 +51,7 @@
 
 #include <sys/time.h>
 
+#include "kinect.h"
 #include "median.h"
 
 // Cuda
@@ -303,6 +304,7 @@ int main(int argc, char *argv[]) {
     SDL_Surface *screen;
 
     median_filter_init();
+    kinect_init();
     
 #if 0
     cudaDeviceReset();
@@ -479,11 +481,10 @@ int main(int argc, char *argv[]) {
 #endif
 
         gpu_output = NULL;
-        uint16_t d[640*480];
-        memset(d, 127, 640*480*sizeof(uint16_t));
         cudaGLMapBufferObject((void**)&gpu_output, bufferID);
-        median_filter(d, gpu_output);
+        median_filter(take_depth_image(), gpu_output);
         cudaGLUnmapBufferObject(bufferID);
+        done_depth_image();
 
         printf("drawing to screen\n");
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, bufferID);
