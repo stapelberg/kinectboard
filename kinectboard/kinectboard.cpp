@@ -315,7 +315,21 @@ int main(int argc, char *argv[]) {
            *gpu_masked_median_output,
            *gpu_glow_output;
 
+    int fps = 0;
+    int last_time = 0;
+    int current_time;
+
     while (1) {
+        /* FPS counter */
+        current_time = SDL_GetTicks();
+        if ((current_time - last_time) >= 1000) {
+            static char buffer[20] = {0};
+            sprintf(buffer, "%d FPS", fps);
+            SDL_WM_SetCaption(buffer, 0);
+            fps = 0;
+            last_time = current_time;
+        }
+
         //kb_poll_events(list);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -378,5 +392,6 @@ int main(int argc, char *argv[]) {
         glEnd();
 
         SDL_GL_SwapBuffers();
+        fps++;
     }
 }
