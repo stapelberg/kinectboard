@@ -53,7 +53,7 @@ else()
 
   include_directories(../util ../common include ${OPENGL_INCLUDE_DIRS} ${SDL_INCLUDE_DIR} ${SDLTTF_INCLUDE_DIR} ${GLUT_INCLUDE_DIRS} ${USB_INCLUDE_DIRS})
 
-  CUDA_ADD_EXECUTABLE(kinectboard kinectboard.cpp median.cu glow.cu kinect.cpp)
+  CUDA_ADD_EXECUTABLE(kinectboard kinectboard.cpp median.cu glow.cu maskrgb.cu kinect.cpp)
   target_link_libraries(kinectboard freenect kinectboard_util ${CUDA_LIBRARIES} ${SDLTTF_LIBRARY} ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
 endif()
 

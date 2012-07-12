@@ -27,11 +27,11 @@ __global__ void glow_gpu(uchar4 *gpu_median_masked, uchar4 *gpu_output) {
     for (int grow = (y-10); grow < (y+10); grow++) {
         for (int gcol = (x-10); gcol < (x+10); gcol++) {
             /* TODO: check whether it’s within glow_start and glow_end */
-            if (tex2D(gpu_median_masked_tex, gcol, grow).x == 255) {
+            if (tex2D(gpu_median_masked_tex, gcol, grow).x != 0) {
                 gpu_output[i].w = 0;
                 gpu_output[i].x = 0;
                 gpu_output[i].y = 0;
-                gpu_output[i].z = 255;
+                gpu_output[i].z = tex2D(gpu_median_masked_tex, gcol, grow).x;
                 return;
             }
         }

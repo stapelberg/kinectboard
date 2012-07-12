@@ -89,12 +89,12 @@ __global__ void median_mask_gpu(bool calibration, uchar4 *median_output, uchar4 
         difference = fmaxf(difference, (median - gpu_ranges[i].y));
         if (difference > 2) {
             gpu_output[i].w = 0;
-            gpu_output[i].x = 255;
+            gpu_output[i].x = median;
             gpu_output[i].y = 0;
             gpu_output[i].z = 0;
         } else {
             gpu_output[i].w = 0;
-            gpu_output[i].x = median;
+            gpu_output[i].x = 0;
             gpu_output[i].y = median;
             gpu_output[i].z = median;
         }

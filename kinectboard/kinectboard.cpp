@@ -54,6 +54,7 @@
 #include "kinect.h"
 #include "median.h"
 #include "glow.h"
+#include "maskrgb.h"
 
 // Cuda
 #include <cuda.h>
@@ -70,9 +71,11 @@
 GLuint medianBufferID;
 GLuint maskedMedianBufferID;
 GLuint glowBufferID;
+GLuint maskRgbBufferID;
 GLuint medianTextureID;
 GLuint maskedMedianTextureID;
 GLuint glowTextureID;
+GLuint maskRgbTextureID;
 
 uint16_t *depth_buffer;
 
@@ -268,6 +271,7 @@ int main(int argc, char *argv[]) {
     median_filter_init();
     glow_filter_init();
     kinect_init();
+    mask_rgb_init();
     
     /* Initialize SDL */
     SDL_Init(SDL_INIT_VIDEO);
@@ -308,12 +312,14 @@ int main(int argc, char *argv[]) {
     allocateGLTexture(&medianBufferID, &medianTextureID);
     allocateGLTexture(&maskedMedianBufferID, &maskedMedianTextureID);
     allocateGLTexture(&glowBufferID, &glowTextureID);
+    allocateGLTexture(&maskRgbBufferID, &maskRgbTextureID);
 
     printf("gl set up.\n");
  
     uchar4 *gpu_median_output,
            *gpu_masked_median_output,
-           *gpu_glow_output;
+           *gpu_glow_output,
+           *gpu_mask_rgb_output;
 
     int fps = 0;
     int last_time = 0;
@@ -338,10 +344,12 @@ int main(int argc, char *argv[]) {
         gpu_median_output = NULL;
         gpu_masked_median_output = NULL;
         gpu_glow_output = NULL;
+        gpu_mask_rgb_output = NULL;
 
         cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_median_output, medianBufferID));
         cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_masked_median_output, maskedMedianBufferID));
         cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_glow_output, glowBufferID));
+        cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_mask_rgb_output, maskRgbBufferID));
 
         median_filter(take_depth_image(), gpu_median_output);
         done_depth_image();
@@ -349,14 +357,18 @@ int main(int argc, char *argv[]) {
         median_mask(calibration, gpu_median_output, gpu_masked_median_output);
         glow_filter(gpu_masked_median_output, gpu_glow_output);
 
+        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output);
+        done_rgb_image();
+
         cutilSafeCall(cudaGLUnmapBufferObject(maskedMedianBufferID));
         cutilSafeCall(cudaGLUnmapBufferObject(medianBufferID));
         cutilSafeCall(cudaGLUnmapBufferObject(glowBufferID));
+        cutilSafeCall(cudaGLUnmapBufferObject(maskRgbBufferID));
 
         //glBindBuffer(GL_PIXEL_UNPACK_BUFFER, medianBufferID);
         //glBindTexture(GL_TEXTURE_2D, medianTextureID);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, maskedMedianBufferID);
-        glBindTexture(GL_TEXTURE_2D, maskedMedianTextureID);
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glowBufferID);
+        glBindTexture(GL_TEXTURE_2D, glowTextureID);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
         glBegin(GL_QUADS);
@@ -373,9 +385,10 @@ int main(int argc, char *argv[]) {
           glVertex2f(640 * 1.0f, 300.0f);
         glEnd();
 
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glowBufferID);
-        glBindTexture(GL_TEXTURE_2D, glowTextureID);
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, maskRgbBufferID);
+        glBindTexture(GL_TEXTURE_2D, maskRgbTextureID);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
 
         glBegin(GL_QUADS);
           glTexCoord2f(0, 1.0f);
