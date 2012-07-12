@@ -67,19 +67,6 @@
 #define SCREEN_HEIGHT 480 + 300
 #define SCREEN_DEPTH 32
 
-/* Tauscht den Front- und Mid-Buffer aus */
-#define swap_buffer(name) do { \
-    uint8_t *tmp = name ## _front; \
-    name ## _front = name ## _mid; \
-    name ## _mid = tmp; \
-} while (0)
-
-#define pushrgb(name, idx, r, g, b) do { \
-    name ## _mid[3 * idx + 0] = r; \
-    name ## _mid[3 * idx + 1] = g; \
-    name ## _mid[3 * idx + 2] = b; \
-} while (0)
-
 GLuint medianBufferID;
 GLuint maskedMedianBufferID;
 GLuint glowBufferID;
@@ -87,60 +74,12 @@ GLuint medianTextureID;
 GLuint maskedMedianTextureID;
 GLuint glowTextureID;
 
-pthread_t freenect_thread;
-volatile int die = 0;
-
-int g_argc;
-char **g_argv;
-
-int window;
-
-pthread_mutex_t gl_backbuf_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-unsigned char depthPixelsLookupNearWhite[2048];
-
 uint16_t *depth_buffer;
-
-// back: owned by libfreenect (implicit for depth)
-// mid: owned by callbacks, "latest frame ready"
-// front: owned by GL, "currently being drawn"
-
-// processed depth as an RGB image (with a median filter)
-uint8_t *depth_mid, *depth_front;
-// processed depth as raw values (with a median filter)
-uint8_t *depth_median_filtered;
-uint8_t *depth_median_filtered_rgb;
-uint8_t *depth_median_filtered_masked_rgb;
-// processed and masked depth as an RGB image
-uint8_t *masked_depth_mid, *masked_depth_front;
-// processed and masked depth as an RGB image (masked area retains the depth info)
-uint8_t *masked_depth_detail_mid, *masked_depth_detail_front;
-// Glow area
-uint8_t *glow_mid, *glow_front;
-// raw depth (as received from kinect)
-uint8_t *raw_depth_mid, *raw_depth_front;
-uint8_t *rgb_back, *rgb_mid, *rgb_front;
-uint8_t *rgb_masked_mid, *rgb_masked_front;
 
 GLuint gl_depth_tex;
 GLuint gl_rgb_tex;
 
-freenect_context *f_ctx;
-freenect_device *f_dev;
-int freenect_angle = 0;
-int freenect_led;
-
-freenect_video_format requested_format = FREENECT_VIDEO_RGB;
-freenect_video_format current_format = FREENECT_VIDEO_RGB;
-
-pthread_cond_t gl_frame_cond = PTHREAD_COND_INITIALIZER;
-int got_rgb = 0;
-int got_depth = 0;
-
 extern int ANIMATION_ONE_STEP;
-// Idealerweise auf 13, sobald wir CUDA haben. Bis dahin auf 9.
-int MEDIAN_FILTER_SIZE = 5;
-pthread_mutex_t median_filter_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Die Referenz-Farbe (vom Nutzer ausgewählt). Wird normiert gespeichert:
 // Jeder Farbanteil wird durch √(r² + g² + b²) geteilt.
@@ -156,6 +95,7 @@ int DEPTH_MASK_THRESHOLD = 2;
 
 SDL_Surface *chosen_color_surface;
 
+#if 0
 void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 {
     // swap buffers
@@ -189,7 +129,6 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
         }
     }
 
-#if 0
     static CvMat *rotationsmatrix = NULL;
     static CvMat *translationsmatrix = NULL;
     static CvMat *result = NULL;
@@ -273,26 +212,12 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 
         }
     }
-#endif
 
     /* Buffer austauschen (double-buffering) */
     swap_buffer(rgb);
     swap_buffer(rgb_masked);
 }
-
-#define row_col_to_px(row, col) ((row) * 640 + (col))
-
-// must be a multiple of 16
-#define GRID_X 40
-#define GRID_Y 32
-
-// must be a multiple of 8
-#define BLOCK_X 16
-#define BLOCK_Y 15
-
-static time_t last_time;
-int fps = 0;
-int frames = 0;
+#endif
 
 bool calibration = false;
 
@@ -318,6 +243,25 @@ static void kb_poll_events(void) {
     }
 }
 
+/*
+ * Allocates a GL buffer and texture to be used on the GPU.
+ *
+ */
+static void allocateGLTexture(GLuint *bufferID, GLuint *textureID) {
+    glGenBuffers(1, bufferID);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *bufferID);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, 640 * 480 * 4 * sizeof(GLubyte), NULL, GL_DYNAMIC_COPY);
+    cudaGLRegisterBufferObject(*bufferID);
+
+    glEnable(GL_TEXTURE_2D);
+    glGenTextures(1, textureID);
+    glBindTexture(GL_TEXTURE_2D, *textureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 640, 480, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
 int main(int argc, char *argv[]) {
     SDL_Surface *screen;
 
@@ -325,54 +269,16 @@ int main(int argc, char *argv[]) {
     glow_filter_init();
     kinect_init();
     
-#if 0
-    cudaDeviceReset();
-
-    /* init cuda */
-    CUresult error_id = cuInit(0);
-    if (error_id != CUDA_SUCCESS) {
-        printf("cuInit(0) returned %d\n-> %s\n", error_id, getCudaDrvErrorString(error_id));
-        exit(1);
-    }
-#endif
-
-#if 0
-    if (freenect_init(&f_ctx, NULL) < 0) {
-        printf("freenect_init() failed\n");
-        return 1;
-    }
-    
-    //freenect_set_log_level(f_ctx, FREENECT_LOG_DEBUG);
-    freenect_select_subdevices(f_ctx, (freenect_device_flags)(FREENECT_DEVICE_MOTOR | FREENECT_DEVICE_CAMERA));
-
-    int nr_devices = freenect_num_devices (f_ctx);
-    printf ("Number of devices found: %d\n", nr_devices);
-
-    int user_device_number = 0;
-    if (argc > 1)
-        user_device_number = atoi(argv[1]);
-
-    if (nr_devices < 1) {
-        freenect_shutdown(f_ctx);
-        return 1;
-    }
-
-    if (freenect_open_device(f_ctx, &f_dev, user_device_number) < 0) {
-        printf("Could not open device\n");
-        freenect_shutdown(f_ctx);
-        return 1;
-    }
-#endif
     /* Initialize SDL */
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
 
-    SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 16 );
-    SDL_GL_SetAttribute( SDL_GL_BUFFER_SIZE, 32 );
-    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
+    SDL_GL_SetAttribute(SDL_GL_BUFFER_SIZE, 32);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 1);
 
     /* Initialize the screen / window */
@@ -399,151 +305,18 @@ int main(int argc, char *argv[]) {
     glLoadIdentity();
 
     /* Allocate textures and buffers to draw into (from the GPU) */
-    glGenBuffers(1, &medianBufferID);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, medianBufferID);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER, 640 * 480 * 4 * sizeof(GLubyte), NULL, GL_DYNAMIC_COPY);
-    cudaGLRegisterBufferObject(medianBufferID);
-
-    glEnable(GL_TEXTURE_2D);
-    glGenTextures(1, &medianTextureID);
-    glBindTexture(GL_TEXTURE_2D, medianTextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 640, 480, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glGenBuffers(1, &maskedMedianBufferID);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, maskedMedianBufferID);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER, 640 * 480 * 4 * sizeof(GLubyte), NULL, GL_DYNAMIC_COPY);
-    cudaGLRegisterBufferObject(maskedMedianBufferID);
-
-    glEnable(GL_TEXTURE_2D);
-    glGenTextures(1, &maskedMedianTextureID);
-    glBindTexture(GL_TEXTURE_2D, maskedMedianTextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 640, 480, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glGenBuffers(1, &glowBufferID);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glowBufferID);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER, 640 * 480 * 4 * sizeof(GLubyte), NULL, GL_DYNAMIC_COPY);
-    cudaGLRegisterBufferObject(glowBufferID);
-
-    glEnable(GL_TEXTURE_2D);
-    glGenTextures(1, &glowTextureID);
-    glBindTexture(GL_TEXTURE_2D, glowTextureID);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 640, 480, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-
+    allocateGLTexture(&medianBufferID, &medianTextureID);
+    allocateGLTexture(&maskedMedianBufferID, &maskedMedianTextureID);
+    allocateGLTexture(&glowBufferID, &glowTextureID);
 
     printf("gl set up.\n");
  
-#if 0
-    int res = pthread_create(&freenect_thread, NULL, freenect_threadfunc, NULL);
-    if (res) {
-        printf("pthread_create failed\n");
-        freenect_shutdown(f_ctx);
-        return 1;
-    }
-#endif
-
-    //query_cuda_device(list);
-
     uchar4 *gpu_median_output,
            *gpu_masked_median_output,
            *gpu_glow_output;
 
     while (1) {
         //kb_poll_events(list);
-        struct timeval begin, end;
-        gettimeofday(&begin, NULL);
-
-#if 0
-
-        /* depth in den Speicher der GPU kopieren */
-        static uint16_t *gpu_depth = NULL;
-        static uint8_t *gpu_raw_depth = NULL;
-        uchar4 *gpu_output = NULL;
-        static uint8_t *gpu_out2 = NULL;
-        static uint8_t *gpu_table = NULL;
-        if (!gpu_depth) {
-            cudaMalloc(&gpu_depth, 640*480 * sizeof(uint16_t));
-            cudaChannelFormatDesc channelDesc = cudaCreateChannelDesc<uint16_t>();
-            cudaError_t err = cudaBindTexture2D(NULL, &texRef, gpu_depth, &channelDesc, 640, 480, 640 * 2);
-            if (err != cudaSuccess) {
-                printf("nope: %s.\n", cudaGetErrorString(err));
-                exit(1);
-            }
-        }
-        if (!gpu_raw_depth)
-            cudaMalloc(&gpu_raw_depth, 640*480 * 3);
-        if (!gpu_out2)
-            cudaMalloc(&gpu_out2, 640*480*3);
-        if (!gpu_table) {
-            cudaMalloc(&gpu_table, 2048);
-            cudaMemcpy(gpu_table, depthPixelsLookupNearWhite, 2048, cudaMemcpyHostToDevice);
-        }
-
-        gettimeofday(&begin, NULL);
-        cudaMemcpyAsync(gpu_depth, depth_buffer, 640*480 * sizeof(uint16_t), cudaMemcpyHostToDevice, 0);
-
-        cudaThreadSynchronize();
-
-        gettimeofday(&end, NULL);
-
-        if (end.tv_usec < begin.tv_usec) {
-            end.tv_usec += 1000000;
-            begin.tv_sec += 1;
-        }
-        size_t usecs = (end.tv_sec - begin.tv_sec) * 1000000;
-        usecs += (end.tv_usec - begin.tv_usec);
-        printf("memcpy = %d\n", usecs);
-        gettimeofday(&begin, NULL);
-
-        cudaGLMapBufferObject((void**)&gpu_output, bufferID);
-        cudaThreadSynchronize();
-        gettimeofday(&end, NULL);
-
-        if (end.tv_usec < begin.tv_usec) {
-            end.tv_usec += 1000000;
-            begin.tv_sec += 1;
-        }
-        usecs = (end.tv_sec - begin.tv_sec) * 1000000;
-        usecs += (end.tv_usec - begin.tv_usec);
-        printf("map = %d\n", usecs);
-        cudaThreadSynchronize();
-        gettimeofday(&begin, NULL);
-
-
-        // blocksize vielfaches von 8
-        // gridsize vielfaches von 16
-        dim3 blocksize(BLOCK_X, BLOCK_Y);
-        dim3 gridsize(GRID_X, GRID_Y);
-
-        median_filter_gpu<<<1, 1>>>(gpu_depth, gpu_table, gpu_output);
-
-        //cudaThreadSynchronize();
-        cudaMemcpy(masked_depth_mid, gpu_out2, 640*480*3, cudaMemcpyDeviceToHost);
-
-
-        gettimeofday(&end, NULL);
-
-        if (end.tv_usec < begin.tv_usec) {
-            end.tv_usec += 1000000;
-            begin.tv_sec += 1;
-        }
-        usecs = (end.tv_sec - begin.tv_sec) * 1000000;
-        usecs += (end.tv_usec - begin.tv_usec);
-        printf(" usecs = %d\n", usecs);
-
-        cudaGLUnmapBufferObject(bufferID);
-        sleep(1);
-#endif
-
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
         kb_poll_events();
