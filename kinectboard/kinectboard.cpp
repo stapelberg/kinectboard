@@ -299,6 +299,22 @@ static time_t last_time;
 int fps = 0;
 int frames = 0;
 
+static void kb_poll_events(void) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_KEYDOWN:
+                switch (event.key.keysym.sym) {
+                    case SDLK_ESCAPE:
+                        kinect_shutdown();
+                        exit(0);
+                    default:
+                        printf("Unknown key pressed.\n");
+                        break;
+                }
+        }
+    }
+}
 
 int main(int argc, char *argv[]) {
     SDL_Surface *screen;
@@ -479,6 +495,8 @@ int main(int argc, char *argv[]) {
         cudaGLUnmapBufferObject(bufferID);
         sleep(1);
 #endif
+
+        kb_poll_events();
 
         gpu_output = NULL;
         cudaGLMapBufferObject((void**)&gpu_output, bufferID);

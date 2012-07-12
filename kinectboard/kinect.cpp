@@ -89,6 +89,7 @@ void done_depth_image(void) {
  * Freenect variables and functions
  ******************************************************************************/
 
+static bool shutdown_requested = false;
 static freenect_context *f_ctx;
 static freenect_device *f_dev;
 static pthread_t freenect_thread;
@@ -126,6 +127,19 @@ void kinect_init(void) {
     }
 }
 
+void kinect_shutdown(void) {
+    /* Set a flag so that freenect_threadfunc stops looping (that could trigger
+     * a segfault. Not that we care about it, since we’re exiting anyways, but
+     * it’s cleaner). */
+    shutdown_requested = true;
+
+    freenect_stop_depth(f_dev);
+    freenect_stop_video(f_dev);
+
+    freenect_close_device(f_dev);
+    freenect_shutdown(f_ctx);
+}
+
 static uint8_t *rgb_back, *rgb_mid;
 
 static void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp) {
@@ -156,7 +170,7 @@ static void *freenect_threadfunc(void *arg) {
 
     printf("'w'-tilt up, 's'-level, 'x'-tilt down, '0'-'6'-select LED mode, 'f'-video format\n");
 
-    while (/*!die && */freenect_process_events(f_ctx) >= 0) {
+    while (!shutdown_requested && freenect_process_events(f_ctx) >= 0) {
         //Throttle the text output
         if (accelCount++ >= 2000) {
             accelCount = 0;
@@ -169,14 +183,6 @@ static void *freenect_threadfunc(void *arg) {
             fflush(stdout);
         }
     }
-
-    printf("\nshutting down streams...\n");
-
-    freenect_stop_depth(f_dev);
-    freenect_stop_video(f_dev);
-
-    freenect_close_device(f_dev);
-    freenect_shutdown(f_ctx);
 
     printf("-- done!\n");
     return NULL;
