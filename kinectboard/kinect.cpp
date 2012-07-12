@@ -78,10 +78,12 @@ uint16_t *take_depth_image(void) {
  */
 void done_depth_image(void) {
     pthread_mutex_lock(&depth_mutex);
-    void *tmp = depth_image_queue[1].data;
-    depth_image_queue[1].data = depth_image_queue[0].data;
-    depth_image_queue[0].data = tmp;
-    depth_image_queue[0].used = false;
+    if (depth_image_queue[0].used) {
+        void *tmp = depth_image_queue[1].data;
+        depth_image_queue[1].data = depth_image_queue[0].data;
+        depth_image_queue[0].data = tmp;
+        depth_image_queue[0].used = false;
+    }
     pthread_mutex_unlock(&depth_mutex);
 }
 
