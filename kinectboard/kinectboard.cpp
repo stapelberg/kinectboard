@@ -59,17 +59,6 @@
 #include <cutil_inline.h>
 #include <cuda_gl_interop.h>
 #include <drvapi_error_string.h>
-#if 0
-// undefine macros which are in OpenCV *and* CUDA
-#undef MAX
-#undef MIN
-// Shared Utilities (QA Testing)
-#include <shrUtils.h>
-#include <shrQATest.h>
-#endif
-
-#undef __SSE2__
-#include <opencv2/core/core_c.h>
 
 // two kinect images (full resolution) next to each other
 #define SCREEN_WIDTH (640 * 2)
