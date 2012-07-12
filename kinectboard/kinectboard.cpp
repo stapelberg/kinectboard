@@ -381,6 +381,20 @@ int main(int argc, char *argv[]) {
 
     glewInit();
 
+    /* Setup viewport */
+    glEnable(GL_TEXTURE_2D);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    /* Allocate textures and buffers to draw into (from the GPU) */
     glGenBuffers(1, &bufferID);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, bufferID);
     glBufferData(GL_PIXEL_UNPACK_BUFFER, 640 * 480 * 4 * sizeof(GLubyte), NULL, GL_DYNAMIC_COPY);
@@ -511,16 +525,16 @@ int main(int argc, char *argv[]) {
 
         glBegin(GL_QUADS);
           glTexCoord2f(0, 1.0f);
-          glVertex3f(0, 0, 0);
+          glVertex2f(0, 300.0f);
 
           glTexCoord2f(0, 0);
-          glVertex3f(0, 1.0f, 0);
+          glVertex2f(0, SCREEN_HEIGHT * 1.0f);
 
           glTexCoord2f(1.0f, 0);
-          glVertex3f(1.0f, 1.0f, 0);
+          glVertex2f(640 * 1.0f, SCREEN_HEIGHT * 1.0f);
 
           glTexCoord2f(1.0f, 1.0f);
-          glVertex3f(1.0f, 0, 0);
+          glVertex2f(640 * 1.0f, 300.0f);
         glEnd();
 
 
