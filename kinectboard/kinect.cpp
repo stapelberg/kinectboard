@@ -22,7 +22,9 @@ struct queue_entry {
 };
 
 static struct queue_entry rgb_image_queue[2];
+static pthread_mutex_t rgb_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct queue_entry depth_image_queue[2];
+static pthread_mutex_t depth_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void queue_init(void) {
     rgb_image_queue[0].data = malloc(KINECT_RGB_SIZE);
@@ -41,8 +43,7 @@ static void queue_init(void) {
  *
  */
 static void enqueue_rgb_image(uint8_t *new_rgb_image) {
-    // TODO: lock
-
+    pthread_mutex_lock(&rgb_mutex);
     /* There still is an image in the queue, we just replace it. */
     if (rgb_image_queue[0].used) {
         memcpy(rgb_image_queue[0].data, new_rgb_image, KINECT_RGB_SIZE);
@@ -50,11 +51,11 @@ static void enqueue_rgb_image(uint8_t *new_rgb_image) {
         memcpy(rgb_image_queue[0].data, new_rgb_image, KINECT_RGB_SIZE);
         rgb_image_queue[0].used = true;
     }
+    pthread_mutex_unlock(&rgb_mutex);
 }
 
 static void enqueue_depth_image(uint16_t *new_depth_data) {
-    // TODO: lock
-
+    pthread_mutex_lock(&depth_mutex);
     /* There still is an image in the queue, we just replace it. */
     if (depth_image_queue[0].used) {
         memcpy(depth_image_queue[0].data, new_depth_data, KINECT_DEPTH_SIZE);
@@ -62,7 +63,7 @@ static void enqueue_depth_image(uint16_t *new_depth_data) {
         memcpy(depth_image_queue[0].data, new_depth_data, KINECT_DEPTH_SIZE);
         depth_image_queue[0].used = true;
     }
-    printf("new depth image enqueued\n");
+    pthread_mutex_unlock(&depth_mutex);
 }
 
 uint16_t *take_depth_image(void) {
@@ -76,11 +77,12 @@ uint16_t *take_depth_image(void) {
  *
  */
 void done_depth_image(void) {
-    // TODO: lock
+    pthread_mutex_lock(&depth_mutex);
     void *tmp = depth_image_queue[1].data;
     depth_image_queue[1].data = depth_image_queue[0].data;
     depth_image_queue[0].data = tmp;
     depth_image_queue[0].used = false;
+    pthread_mutex_unlock(&depth_mutex);
 }
 
 /*******************************************************************************
