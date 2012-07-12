@@ -10,11 +10,6 @@
 #define BLOCK_X 16
 #define BLOCK_Y 15
 
-struct range {
-    float min_val;
-    float max_val;
-};
-
 texture<uint16_t, 2> gpu_depth_tex;
 //texture<float2, 2> gpu_ranges_tex;
 static uint16_t *gpu_depth;

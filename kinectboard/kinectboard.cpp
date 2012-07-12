@@ -53,6 +53,7 @@
 
 #include "kinect.h"
 #include "median.h"
+#include "glow.h"
 
 // Cuda
 #include <cuda.h>
@@ -81,8 +82,10 @@
 
 GLuint medianBufferID;
 GLuint maskedMedianBufferID;
+GLuint glowBufferID;
 GLuint medianTextureID;
 GLuint maskedMedianTextureID;
+GLuint glowTextureID;
 
 pthread_t freenect_thread;
 volatile int die = 0;
@@ -319,6 +322,7 @@ int main(int argc, char *argv[]) {
     SDL_Surface *screen;
 
     median_filter_init();
+    glow_filter_init();
     kinect_init();
     
 #if 0
@@ -421,6 +425,20 @@ int main(int argc, char *argv[]) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+    glGenBuffers(1, &glowBufferID);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glowBufferID);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, 640 * 480 * 4 * sizeof(GLubyte), NULL, GL_DYNAMIC_COPY);
+    cudaGLRegisterBufferObject(glowBufferID);
+
+    glEnable(GL_TEXTURE_2D);
+    glGenTextures(1, &glowTextureID);
+    glBindTexture(GL_TEXTURE_2D, glowTextureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 640, 480, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
 
     printf("gl set up.\n");
  
@@ -436,7 +454,8 @@ int main(int argc, char *argv[]) {
     //query_cuda_device(list);
 
     uchar4 *gpu_median_output,
-           *gpu_masked_median_output;
+           *gpu_masked_median_output,
+           *gpu_glow_output;
 
     while (1) {
         //kb_poll_events(list);
@@ -531,20 +550,26 @@ int main(int argc, char *argv[]) {
 
         gpu_median_output = NULL;
         gpu_masked_median_output = NULL;
+        gpu_glow_output = NULL;
 
         cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_median_output, medianBufferID));
         cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_masked_median_output, maskedMedianBufferID));
+        cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_glow_output, glowBufferID));
 
         median_filter(take_depth_image(), gpu_median_output);
         done_depth_image();
 
         median_mask(calibration, gpu_median_output, gpu_masked_median_output);
+        glow_filter(gpu_masked_median_output, gpu_glow_output);
 
         cutilSafeCall(cudaGLUnmapBufferObject(maskedMedianBufferID));
         cutilSafeCall(cudaGLUnmapBufferObject(medianBufferID));
+        cutilSafeCall(cudaGLUnmapBufferObject(glowBufferID));
 
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, medianBufferID);
-        glBindTexture(GL_TEXTURE_2D, medianTextureID);
+        //glBindBuffer(GL_PIXEL_UNPACK_BUFFER, medianBufferID);
+        //glBindTexture(GL_TEXTURE_2D, medianTextureID);
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, maskedMedianBufferID);
+        glBindTexture(GL_TEXTURE_2D, maskedMedianTextureID);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
         glBegin(GL_QUADS);
@@ -561,8 +586,8 @@ int main(int argc, char *argv[]) {
           glVertex2f(640 * 1.0f, 300.0f);
         glEnd();
 
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, maskedMedianBufferID);
-        glBindTexture(GL_TEXTURE_2D, maskedMedianTextureID);
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glowBufferID);
+        glBindTexture(GL_TEXTURE_2D, glowTextureID);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
         glBegin(GL_QUADS);
