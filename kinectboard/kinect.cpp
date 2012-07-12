@@ -66,8 +66,29 @@ static void enqueue_depth_image(uint16_t *new_depth_data) {
     pthread_mutex_unlock(&depth_mutex);
 }
 
+uint8_t *take_rgb_image(void) {
+    return (uint8_t*)rgb_image_queue[1].data;
+}
+
 uint16_t *take_depth_image(void) {
     return (uint16_t*)depth_image_queue[1].data;
+}
+
+/*
+ * Signals that the thread which called take_depth_image() before is now done
+ * with the data and the data should be discarded. This makes room for one new
+ * entry in the queue.
+ *
+ */
+void done_rgb_image(void) {
+    if (rgb_image_queue[0].used) {
+        pthread_mutex_lock(&rgb_mutex);
+        void *tmp = rgb_image_queue[1].data;
+        rgb_image_queue[1].data = rgb_image_queue[0].data;
+        rgb_image_queue[0].data = tmp;
+        rgb_image_queue[0].used = false;
+        pthread_mutex_unlock(&rgb_mutex);
+    }
 }
 
 /*
@@ -148,6 +169,8 @@ static void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp) {
     rgb_back = rgb_mid;
     freenect_set_video_buffer(dev, rgb_back);
     rgb_mid = (uint8_t*)rgb;
+
+    enqueue_rgb_image(rgb_mid);
 }
 
 static void depth_cb(freenect_device *dev, void *v_depth, uint32_t timestamp) {
