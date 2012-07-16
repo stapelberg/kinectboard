@@ -1,0 +1,28 @@
+<html>
+<head>
+<link href='http://fonts.googleapis.com/css?family=PT+Sans' rel='stylesheet' type='text/css'>
+
+<script type="text/javascript">
+function Retrieve(data) {
+	document.getElementById('data').innerHTML = data;
+}
+function SetFPS(data) {
+	document.getElementById('fps').innerHTML = data;
+}
+function SetRGB(data) {
+	var div = document.getElementById( 'rgb' );
+	var rgb = data.split(',');
+	div.style.backgroundColor = "rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")";
+}
+</script>
+</head>
+<body style="font-family: 'PT Sans', sans-serif; background-image:url(bg.png);background-repeat:repeat;color:white;">
+<input type=submit value="Exit" style="font-family: 'PT Sans', sans-serif; font-size:10pt;" onclick="Kinectboard.Exit();" />
+<input type=submit value="Retrieve Data" onclick="Kinectboard.GetData(1.0);" /><br>
+<br><div id="data">Click Retrieve Data ...</div>
+<br><div id="fps"></div>
+<br><div id="rgb"> COLOR LOL </div>
+<input type="range" />
+
+</body>
+</html>

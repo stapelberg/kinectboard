@@ -4,6 +4,7 @@
 
 #Include FindCUDA script
 INCLUDE(FindCUDA)
+SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 
 if (WIN32)
   set_source_files_properties(kinectboard.cu kinectboard_controls.c kinectboard_images.c PROPERTIES LANGUAGE CXX)
@@ -29,6 +30,7 @@ else()
   find_package(CUDA)
 
   link_directories (${CMAKE_SOURCE_DIR}/lib) 
+  link_directories (${CMAKE_SOURCE_DIR}/bin) 
 
   set(CMAKE_C_FLAGS "-Wall -g -O3")
 
@@ -54,7 +56,5 @@ else()
   include_directories(../util ../common include ${OPENGL_INCLUDE_DIRS} ${SDL_INCLUDE_DIR} ${SDLTTF_INCLUDE_DIR} ${GLUT_INCLUDE_DIRS} ${USB_INCLUDE_DIRS})
 
   CUDA_ADD_EXECUTABLE(kinectboard kinectboard.cpp median.cu glow.cu maskrgb.cu kinect.cpp)
-  target_link_libraries(kinectboard freenect kinectboard_util ${CUDA_LIBRARIES} ${SDLTTF_LIBRARY} ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
+  target_link_libraries(kinectboard freenect kinectboard_util awesomium-1.6.5 ${CUDA_LIBRARIES} ${SDLTTF_LIBRARY} ${SDL_LIBRARY} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB})
 endif()
-
-install (TARGETS kinectboard DESTINATION bin)

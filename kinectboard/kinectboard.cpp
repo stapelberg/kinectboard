@@ -55,6 +55,7 @@
 #include "median.h"
 #include "glow.h"
 #include "maskrgb.h"
+#include "kinectboard_ui.h"
 
 #include "kinectboard_images.h"
 
@@ -233,7 +234,16 @@ bool calibration = false;
 static void kb_poll_events(void) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        switch (event.type) {
+        switch (event.type) {  
+            case SDL_MOUSEMOTION:
+                kb_ui_inject_mouse(event.motion.x, event.motion.y);
+                break;
+            case SDL_MOUSEBUTTONUP:
+                kb_ui_inject_mouse_button(event.button.button, false);
+                break;
+            case SDL_MOUSEBUTTONDOWN:
+                kb_ui_inject_mouse_button(event.button.button, true);
+                break;
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {
                     case SDLK_ESCAPE:
@@ -277,6 +287,15 @@ static void allocateGLTexture(GLuint *bufferID, GLuint *textureID) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
+void test_cb(float val) {
+    kb_ui_call_javascript("Retrieve","Test");
+    kb_ui_call_javascript("SetRGB","255,200,200");
+}
+
+void cb_exit() {
+    exit(0);
+}
+
 int main(int argc, char *argv[]) {
     SDL_Surface *screen;
 
@@ -310,7 +329,6 @@ int main(int argc, char *argv[]) {
     /* Setup viewport */
     glEnable(GL_TEXTURE_2D);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glMatrixMode(GL_PROJECTION);
@@ -319,6 +337,10 @@ int main(int argc, char *argv[]) {
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+    
+    kb_ui_init();
+    kb_ui_register_value_callback("GetData",test_cb);
+    kb_ui_register_void_callback("Exit",cb_exit);
 
     /* Allocate textures and buffers to draw into (from the GPU) */
     allocateGLTexture(&rawDepthBufferID, &rawDepthTextureID);
@@ -355,6 +377,7 @@ int main(int argc, char *argv[]) {
             static char buffer[20] = {0};
             sprintf(buffer, "%d FPS", fps);
             SDL_WM_SetCaption(buffer, 0);
+            kb_ui_call_javascript("SetFPS",buffer);
             fps = 0;
             last_time = current_time;
         }
@@ -401,6 +424,9 @@ int main(int argc, char *argv[]) {
         cutilSafeCall(cudaGLUnmapBufferObject(rawRgbBufferID));
 
         kb_images_render();
+
+        kb_ui_update();
+        kb_ui_render();
 
         SDL_GL_SwapBuffers();
         fps++;
