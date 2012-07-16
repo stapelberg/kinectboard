@@ -1,3 +1,9 @@
 lib/
 *.so
-
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+kinectboard/*_generated_*.cu.o
+kinectboard/kinectboard
+util/*.a
