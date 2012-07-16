@@ -329,6 +329,7 @@ int main(int argc, char *argv[]) {
     /* Setup viewport */
     glEnable(GL_TEXTURE_2D);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
     glClear(GL_COLOR_BUFFER_BIT);
 
     glMatrixMode(GL_PROJECTION);
@@ -384,6 +385,18 @@ int main(int argc, char *argv[]) {
 
         //kb_poll_events(list);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+        /* Reset viewport for rendering our images, it was modified by
+         * kb_ui_render(). */
+        glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        gluOrtho2D(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT);
+
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
 
         kb_poll_events();
 
