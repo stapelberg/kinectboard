@@ -19,7 +19,7 @@ static uchar4 blank_image[640*480];
  * from the glow filter as a mask to the RGB image. In gpu_output we will have
  * the RGB values for all areas which are relevant.
  */
-__global__ void mask_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, uchar4 *gpu_output) {
+__global__ void mask_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output) {
     const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     const int i = (y * 640) + x;
@@ -35,6 +35,11 @@ __global__ void mask_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, uchar4 *g
         -7.4423738761617583e-04,
         -1.0916736334336222e-02
     };
+
+    gpu_raw_rgb_output[i].w = 0;
+    gpu_raw_rgb_output[i].x = gpu_rgb_image[3 * i + 0];
+    gpu_raw_rgb_output[i].y = gpu_rgb_image[3 * i + 1];
+    gpu_raw_rgb_output[i].z = gpu_rgb_image[3 * i + 2];
 
     uint16_t depth = gpu_glow[i].z;
     /* Punkte mit Tiefenwert == 0 müssen wir überspringen, denn damit
@@ -80,7 +85,7 @@ void mask_rgb_init(void) {
     memset(blank_image, '\0', 640 * 480 * sizeof(uchar4));
 }
 
-void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output) {
+void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output) {
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
 
@@ -90,7 +95,7 @@ void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output) {
 
     cudaMemcpy(gpu_output, blank_image, 640*480 * sizeof(uchar4), cudaMemcpyHostToDevice);
 
-    mask_rgb_gpu<<<gridsize, blocksize>>>(gpu_glow_output, gpu_rgb_image, gpu_output);
+    mask_rgb_gpu<<<gridsize, blocksize>>>(gpu_glow_output, gpu_rgb_image, gpu_output, gpu_raw_rgb_output);
     err = cudaGetLastError();
     if (err != cudaSuccess)
         printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));
