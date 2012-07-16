@@ -1,5 +1,4 @@
 lib/
-*.so
 CMakeCache.txt
 CMakeFiles
 Makefile

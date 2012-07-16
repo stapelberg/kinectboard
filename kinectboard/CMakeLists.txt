@@ -4,7 +4,11 @@
 
 #Include FindCUDA script
 INCLUDE(FindCUDA)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
+else()
+SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin32)
+endif()
 
 if (WIN32)
   set_source_files_properties(kinectboard.cu kinectboard_controls.c kinectboard_images.c PROPERTIES LANGUAGE CXX)
@@ -30,7 +34,11 @@ else()
   find_package(CUDA)
 
   link_directories (${CMAKE_SOURCE_DIR}/lib) 
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   link_directories (${CMAKE_SOURCE_DIR}/bin) 
+else()
+  link_directories (${CMAKE_SOURCE_DIR}/bin32) 
+endif()
 
   set(CMAKE_C_FLAGS "-Wall -g -O3")
 
