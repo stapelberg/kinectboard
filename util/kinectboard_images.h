@@ -10,6 +10,7 @@
 #include <SDL/SDL.h>
 #include <stdbool.h>
 #include <SDL/SDL_ttf.h>
+#include <GL/gl.h>
 
 #include "queue.h"
  
@@ -29,19 +30,22 @@ extern "C" {
     
 typedef struct kb_image {
     const char *label;
-    uint8_t **buffer;
 
-    SDL_Surface *surface;
+    GLuint bufferID;
+    GLuint textureID;
+
     SDL_Rect area;
+#if 0
     SDL_Surface* labelText;
     SDL_Rect labelTextLocation;
+#endif
 
     CIRCLEQ_ENTRY(kb_image) image;
 } kb_image;
 
-void kb_image_create(const char *label, uint8_t **buffer);
+void kb_image_create(const char *label, GLuint bufferID, GLuint textureID);
 
-void kb_images_render(SDL_Surface *screen);
+void kb_images_render();
 
 void kb_images_scroll_left(void);
 void kb_images_scroll_right(void);

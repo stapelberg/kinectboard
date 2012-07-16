@@ -56,6 +56,8 @@
 #include "glow.h"
 #include "maskrgb.h"
 
+#include "kinectboard_images.h"
+
 // Cuda
 #include <cuda.h>
 #include <cutil_inline.h>
@@ -233,6 +235,12 @@ static void kb_poll_events(void) {
                     case SDLK_ESCAPE:
                         kinect_shutdown();
                         exit(0);
+                    case SDLK_LEFT:
+                        kb_images_scroll_left();
+                        break;
+                    case SDLK_RIGHT:
+                        kb_images_scroll_right();
+                        break;
                     case SDLK_e:
                         calibration = !calibration;
                         if (calibration)
@@ -314,6 +322,11 @@ int main(int argc, char *argv[]) {
     allocateGLTexture(&glowBufferID, &glowTextureID);
     allocateGLTexture(&maskRgbBufferID, &maskRgbTextureID);
 
+    kb_image_create("Median-filtered depth image", medianBufferID, medianTextureID);
+    kb_image_create("Masked depth image", maskedMedianBufferID, maskedMedianTextureID);
+    kb_image_create("Glowing depth", glowBufferID, glowTextureID);
+    kb_image_create("Masked kinect RGB image", maskRgbBufferID, maskRgbTextureID);
+
     printf("gl set up.\n");
  
     uchar4 *gpu_median_output,
@@ -365,44 +378,7 @@ int main(int argc, char *argv[]) {
         cutilSafeCall(cudaGLUnmapBufferObject(glowBufferID));
         cutilSafeCall(cudaGLUnmapBufferObject(maskRgbBufferID));
 
-        //glBindBuffer(GL_PIXEL_UNPACK_BUFFER, medianBufferID);
-        //glBindTexture(GL_TEXTURE_2D, medianTextureID);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, glowBufferID);
-        glBindTexture(GL_TEXTURE_2D, glowTextureID);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-        glBegin(GL_QUADS);
-          glTexCoord2f(0, 1.0f);
-          glVertex2f(0, 300.0f);
-
-          glTexCoord2f(0, 0);
-          glVertex2f(0, SCREEN_HEIGHT * 1.0f);
-
-          glTexCoord2f(1.0f, 0);
-          glVertex2f(640 * 1.0f, SCREEN_HEIGHT * 1.0f);
-
-          glTexCoord2f(1.0f, 1.0f);
-          glVertex2f(640 * 1.0f, 300.0f);
-        glEnd();
-
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, maskRgbBufferID);
-        glBindTexture(GL_TEXTURE_2D, maskRgbTextureID);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-
-        glBegin(GL_QUADS);
-          glTexCoord2f(0, 1.0f);
-          glVertex2f(640.0f, 300.0f);
-
-          glTexCoord2f(0, 0);
-          glVertex2f(640.0f, SCREEN_HEIGHT * 1.0f);
-
-          glTexCoord2f(1.0f, 0);
-          glVertex2f(1280 * 1.0f, SCREEN_HEIGHT * 1.0f);
-
-          glTexCoord2f(1.0f, 1.0f);
-          glVertex2f(1280 * 1.0f, 300.0f);
-        glEnd();
+        kb_images_render();
 
         SDL_GL_SwapBuffers();
         fps++;

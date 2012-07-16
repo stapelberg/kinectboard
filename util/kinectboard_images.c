@@ -2,6 +2,12 @@
 
 #include "kinectboard_images.h"
 
+// two kinect images (full resolution) next to each other
+#define SCREEN_WIDTH (640 * 2)
+// kinect image height (480) + space for controls
+#define SCREEN_HEIGHT 480 + 300
+#define SCREEN_DEPTH 32
+
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 #define RMASK 0xff000000
 #define GMASK 0x00ff0000
@@ -29,18 +35,20 @@ static int queue_size = 0;
 /* ******************************************************************* */
 /* KB (RGB) Image */
 
-void kb_image_create(const char *label, uint8_t **buffer) {
+void kb_image_create(const char *label, GLuint bufferID, GLuint textureID) {
     kb_image *new_img = calloc(sizeof(kb_image), 1);
     new_img->label = label;
-    new_img->buffer = buffer;
-    new_img->surface = SDL_CreateRGBSurface(SDL_SWSURFACE, 640, 480, 24, RMASK, GMASK, BMASK, 0);
-    
+    new_img->bufferID = bufferID;
+    new_img->textureID = textureID;
+
+#if 0
     TTF_Font* label_font = TTF_OpenFont("Vera.ttf", 28);
 	SDL_Color color = (SDL_Color){255,255,255};
 	new_img->labelText = TTF_RenderText_Solid(label_font, new_img->label, color);
 	new_img->labelTextLocation = (SDL_Rect){ 120, 5,10,10 };
 	SDL_BlitSurface(new_img->labelText, NULL, new_img->surface, &new_img->labelTextLocation);
-    
+#endif
+
     /* Wir unterscheiden hier nur zwischen 0 und 1 Elementen. Es werden nur die
      * ersten beiden Bilder gerendert standardmäßig (kein Platz mehr auf dem
      * Bildschirm). Wenn der Nutzer scrolled, werden die areas ohnehin neu
@@ -53,13 +61,12 @@ void kb_image_create(const char *label, uint8_t **buffer) {
     queue_size++;
 }
 
-void kb_images_render(SDL_Surface *screen) {
+void kb_images_render() {
     int i = 0, cnt = 0;
     SDL_Rect area;
-    kb_image *img;   
+    kb_image *img;
     CIRCLEQ_FOREACH(img, &image_head, image) {
-
-       if(animation_step > 0) {
+        if (animation_step > 0) {
             if (i++ < startidx-1)
                 continue;
         } else {
@@ -67,10 +74,10 @@ void kb_images_render(SDL_Surface *screen) {
                 continue;
         }
  
-        if(animation_step > 0 && cnt == 0) {
+        if (animation_step > 0 && cnt == 0) {
             area = img->area;
             area.x -= (640-animation_step); 
-        } else if(animation_step < 0 && cnt == 2) { 
+        } else if (animation_step < 0 && cnt == 2) {
             area = img->area;
             area.x += (640-(-1*animation_step));
         } else {
@@ -82,7 +89,6 @@ void kb_images_render(SDL_Surface *screen) {
             animation_step -= ANIMATION_ONE_STEP;
             if (animation_step < 0)
                 animation_step = 0;
-            
         }
 
         if (animation_step < 0) {
@@ -91,14 +97,21 @@ void kb_images_render(SDL_Surface *screen) {
                 animation_step = 0;
         }
 
-        memcpy(img->surface->pixels, *(img->buffer), 640 * 480 * 3);
-        SDL_BlitSurface(img->labelText, NULL, img->surface, &img->labelTextLocation);
-        SDL_BlitSurface(img->surface, NULL, screen, &area);
-        
-        if(animation_step != 0) {
-            if(++cnt == 3) break;
+        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, img->bufferID);
+        glBindTexture(GL_TEXTURE_2D, img->textureID);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+        glBegin(GL_QUADS);
+            glTexCoord2f(0.0f, 1.0f);   glVertex2f(area.x, 300.0f);
+            glTexCoord2f(0.0f, 0.0f);   glVertex2f(area.x, SCREEN_HEIGHT * 1.0f);
+            glTexCoord2f(1.0f, 0.0f);   glVertex2f(area.x + 640, SCREEN_HEIGHT * 1.0f);
+            glTexCoord2f(1.0f, 1.0f);   glVertex2f(area.x + 640, 300.0f);
+        glEnd();
+
+        if (animation_step != 0) {
+            if (++cnt == 3) break;
         } else {
-            if(++cnt == 2) break;
+            if (++cnt == 2) break;
         }        
     }
 }
