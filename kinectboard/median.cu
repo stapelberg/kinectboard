@@ -21,7 +21,7 @@ static float2 *gpu_ranges;
  * image is stored in gpu_output.
  *
  */
-__global__ void median_filter_gpu(uchar4 *gpu_output) {
+__global__ void median_filter_gpu(uchar4 *gpu_output, uchar4 *gpu_raw_depth_output) {
     const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     const int i = (y * 640) + x;
@@ -40,6 +40,8 @@ __global__ void median_filter_gpu(uchar4 *gpu_output) {
         tex2D(gpu_depth_tex, x+1, y+1)
     };
 
+    int pvalraw = (2048.0f * 256.0f) / (nneighbors[4] - 2048.0f);
+
     float ma, mi;
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
@@ -56,6 +58,11 @@ __global__ void median_filter_gpu(uchar4 *gpu_output) {
     gpu_output[i].x = pvaln;
     gpu_output[i].y = pvaln;
     gpu_output[i].z = pvaln;
+
+    gpu_raw_depth_output[i].w = 0;
+    gpu_raw_depth_output[i].x = pvalraw;
+    gpu_raw_depth_output[i].y = pvalraw;
+    gpu_raw_depth_output[i].z = pvalraw;
 }
 
 /*
@@ -133,13 +140,13 @@ void median_clear_calibration(void) {
     cudaThreadSynchronize();
 }
 
-void median_filter(uint16_t *host_depth, uchar4 *gpu_output) {
+void median_filter(uint16_t *host_depth, uchar4 *gpu_output, uchar4 *gpu_raw_depth_output) {
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
 
     cudaMemcpy(gpu_depth, host_depth, 640 * 480 * sizeof(uint16_t), cudaMemcpyHostToDevice);
 
-    median_filter_gpu<<<gridsize, blocksize>>>(gpu_output);
+    median_filter_gpu<<<gridsize, blocksize>>>(gpu_output, gpu_raw_depth_output);
     if (cudaGetLastError() != cudaSuccess)
         printf("Could not call kernel. Wrong gridsize/blocksize?\n");
 
