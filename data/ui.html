@@ -1,0 +1,94 @@
+<html>
+<head>
+<link href='http://fonts.googleapis.com/css?family=PT+Sans' rel='stylesheet' type='text/css'>
+<link href='ui.css' rel='stylesheet' type='text/css'>
+
+<script type="text/javascript">
+function Retrieve(data) {
+	document.getElementById('data').innerHTML = data;
+}
+function SetFPS(data) {
+	document.getElementById('fps').innerHTML = data;
+}
+function SetRGB(data) {
+	var div = document.getElementById( 'rgb' );
+	var rgb = data.split(',');
+	div.style.backgroundColor = "rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")";
+}
+
+function printValue(sliderID, textbox) {
+            var x = document.getElementById(textbox);
+            var y = document.getElementById(sliderID);
+            x.value = y.value;
+}
+
+function SetCUDAInfo(info) {
+	var cuda = info.split('|');
+	document.getElementById('CudaDeviceKey').innerHTML = cuda[0];
+	document.getElementById('CudaDeviceValue').innerHTML = cuda[1];
+
+	document.getElementById('CudaCapabilityKey').innerHTML = cuda[2];
+	document.getElementById('CudaCapabilityValue').innerHTML = cuda[3];
+
+	document.getElementById('CudaMemKey').innerHTML = cuda[4];
+	document.getElementById('CudaMemValue').innerHTML = cuda[5];
+
+	document.getElementById('CudaMultiprocessorsKey').innerHTML = cuda[6];
+	document.getElementById('CudaMultiprocessorsValue').innerHTML = cuda[7];
+
+	document.getElementById('CudaGPUClockKey').innerHTML = cuda[8];
+	document.getElementById('CudaGPUClockValue').innerHTML = cuda[9];
+
+	document.getElementById('CudaMemoryClockKey').innerHTML = cuda[10];
+	document.getElementById('CudaMemoryClockValue').innerHTML = cuda[11];
+
+	document.getElementById('CudaMemBusKey').innerHTML = cuda[12];
+	document.getElementById('CudaMemBusValue').innerHTML = cuda[13];
+}
+</script>
+</head>
+<body>
+<div width=1024 height=300>
+	<div id="topbar">
+	<table border=0>
+	<tr>
+		<td width=80><input type=submit value="<<" onclick="Kinectboard.ImagesLeft();" class=btn /></td>
+		<td width=350><div id="ImageRight" style="font-weight:bold; text-align:center;">Median Image Filtered</div></td>
+		<td> <input type=submit value="Calibrate" onclick="Kinectboard.Calibrate();" class=btn /></td>
+		<td width=350><div id="ImageRight" style="font-weight:bold; text-align:center;">Glow Image</div></td>
+		<td width=80 align=right><input type=submit value=">>" onclick="Kinectboard.ImagesLeft();" class=btn /></td>
+	</tr>
+	</table>
+	</div>
+	<div id="data">Click Retrieve Data ...</div>
+	<table border=0 width=1024><tr><td width=512>
+	<div id="rgb"> COLOR LOL </div>
+	<input id="slider2" type="range" min="-300" max="300" step="50" value ="-300" onchange="printValue('slider2','rangeValue2')">
+	<input id="rangeValue2" type="text" size="2" style="border:none;background:transparent;color:white"/>
+	<br>
+	<input id="slider1" type="range" min="-300" max="300" step="50" value ="-300" onchange="printValue('slider1','rangeValue1')">
+	<input id="rangeValue1" type="text" size="2" style="border:none;background:transparent;color:white"/>
+
+	</div>
+</td><td width=512>
+	<table width=512>
+		<tr><td width=250 id="CudaDeviceKey"></td><td id="CudaDeviceValue"></td></tr>
+		<tr><td width=250 id="CudaCapabilityKey"></td><td id="CudaCapabilityValue"></td></tr>
+		<tr><td width=250 id="CudaMemKey"></td><td id="CudaMemValue"></td></tr>
+		<tr><td width=250 id="CudaMultiprocessorsKey"></td><td id="CudaMultiprocessorsValue"></td></tr>
+		<tr><td width=250 id="CudaGPUClockKey"></td><td id="CudaGPUClockValue"></td></tr>
+		<tr><td width=250 id="CudaMemoryClockKey"></td><td id="CudaMemoryClockValue"></td></tr>
+		<tr><td width=300 id="CudaMemBusKey"></td><td id="CudaMemBusValue"></td></tr>
+	</table>
+</td></tr></table>
+<table width=1024>
+<tr><td width=200>
+	<input type=submit value="Exit" onclick="Kinectboard.Exit();" class=btn />
+	<input type=submit value="Retrieve Data" onclick="Kinectboard.GetData(1.0);" class=btn />
+	</td><td>
+	<div id="fps" style="width:512px;float:right; width:150px;font-size:10pt;">FPS: ?</div>
+</td>
+</tr></table>
+</div>
+</body>
+</html>
