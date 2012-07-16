@@ -6,16 +6,22 @@ An awesome kinect board.
 Required Librarys
 -----------------
 
+* pthreads
 * libfreenect https://github.com/OpenKinect/libfreenect
-* SDL 1.2
-* SDLTTF
+* Nvidia CUDA SDK >= 4.2
 * OpenGL 3
 * Glut 3
-* TTF Bitstream-Vera
+* SDL 1.2
 
 On Debian, try:
 
-    apt-get install build-essential cmake libsdl1.2-dev libsdl-ttf2.0-dev
+    apt-get install build-essential cmake libsdl1.2-dev freeglut3-dev libglew-dev
+
+Install CUDA
+-------------------
+
+Download and install the CUDA SDK >= 4.2 and the NVidia GPU Computing SDK >= 4.2 for your platform from
+http://www.nvidia.com/content/cuda/cuda-downloads.html
 
 Install libfreenect
 -------------------
@@ -38,3 +44,8 @@ Afterwards, build kinectboard:
     cd kinectboard
     cmake .
     make
+    
+The binaries will be placed in either bin (64 Bit) or bin32 (32 Bit legacy support) depending on your platform.
+To start kinectboard you either need to add the corresponding bin folder to your LD_LIBRARY_PATH or run
+    ./kinectboard.sh 
+in the bin folders.
