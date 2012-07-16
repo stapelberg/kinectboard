@@ -56,6 +56,7 @@
 #include "glow.h"
 #include "maskrgb.h"
 #include "kinectboard_ui.h"
+#include "cudadeviceinfo.h"
 
 #include "kinectboard_images.h"
 
@@ -342,6 +343,9 @@ int main(int argc, char *argv[]) {
     kb_ui_init();
     kb_ui_register_value_callback("GetData",test_cb);
     kb_ui_register_void_callback("Exit",cb_exit);
+
+    // The CUDA Device Depends on UI (calls a js function)
+    print_cuda_device_info();
 
     /* Allocate textures and buffers to draw into (from the GPU) */
     allocateGLTexture(&rawDepthBufferID, &rawDepthTextureID);

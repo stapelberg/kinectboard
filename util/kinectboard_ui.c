@@ -26,7 +26,7 @@ static pthread_mutex_t rendermutex = PTHREAD_MUTEX_INITIALIZER;
 #define SCREEN_HEIGHT 300
 #define SCREEN_OFFSET 480
 #define SCREEN_DEPTH 4
-#define URL "ui.html" 
+#define URL "../data/ui.html" 
 #define JSOBJECT "Kinectboard"
 
 static awe_webview* webView = 0;
@@ -189,7 +189,7 @@ void ui_javascript_callback_funct(awe_webview* caller, const awe_string* object_
 }
 
 /* ************************************************************************* */
-void kb_ui_call_javascript(const char* function, char* argv) {
+void kb_ui_call_javascript(const char* function, const char* argv) {
     awe_string* funct_str = awe_string_create_from_ascii(function,strlen(function));
     awe_string* args_str = awe_string_create_from_ascii(argv,strlen(argv));
     awe_jsvalue* val = awe_jsvalue_create_string_value(args_str);

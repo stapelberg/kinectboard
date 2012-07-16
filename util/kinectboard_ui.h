@@ -34,7 +34,7 @@ void kb_ui_inject_mouse(Uint16 x,Uint16 y);
 void kb_ui_inject_mouse_button(uint8_t button, bool down);
 
 /* Call a Javascript function with an array of args. */
-void kb_ui_call_javascript(const char* function, char* argv);
+void kb_ui_call_javascript(const char* function, const char* argv);
 
 typedef void (*kb_ui_js_value_callback)(float set_val);
 typedef void (*kb_ui_js_void_callback)(void);
