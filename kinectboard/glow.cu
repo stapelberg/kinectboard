@@ -37,8 +37,8 @@ __global__ void glow_gpu(uchar4 *gpu_median_masked, uchar4 *gpu_output, uint16_t
                 median_masked >= glow_start &&
                 median_masked <= glow_end) {
                 gpu_output[i].w = 0;
-                gpu_output[i].x = 0;
-                gpu_output[i].y = 0;
+                gpu_output[i].x = median_masked;
+                gpu_output[i].y = median_masked;
                 gpu_output[i].z = median_masked;
                 return;
             }
