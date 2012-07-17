@@ -257,6 +257,24 @@ static void select_reference_color(int x, int y) {
     cutilSafeCall(cudaGLUnmapBufferObject(buffer));
 }
 
+// Callbacks
+
+// Calibration button callback
+static void run_calibration_callback(void) {
+    calibration = !calibration;
+    if (calibration)
+        median_clear_calibration();
+} 
+
+// Exit Callback
+static void exit_callback() {
+    kinect_shutdown();
+    exit(0);    
+}
+
+static void set_distance_threshold_callback(float val) {
+    printf("%f", val);
+}
 static void kb_poll_events(void) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -277,8 +295,7 @@ static void kb_poll_events(void) {
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {
                     case SDLK_ESCAPE:
-                        kinect_shutdown();
-                        exit(0);
+                        exit_callback();
                     case SDLK_LEFT:
                         kb_images_scroll_left();
                         break;
@@ -286,9 +303,7 @@ static void kb_poll_events(void) {
                         kb_images_scroll_right();
                         break;
                     case SDLK_e:
-                        calibration = !calibration;
-                        if (calibration)
-                            median_clear_calibration();
+                        run_calibration_callback();
                         break;
                     default:
                         printf("Unknown key pressed.\n");
@@ -318,21 +333,12 @@ static void allocateGLTexture(GLuint *bufferID, GLuint *textureID) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
-void test_cb(float val) {
-    kb_ui_call_javascript("Retrieve","Test");
-    kb_ui_call_javascript("SetRGB","255,200,200");
-}
-
-void cb_exit() {
-    exit(0);
-}
-
 int main(int argc, char *argv[]) {
     SDL_Surface *screen;
 
     median_filter_init();
     glow_filter_init();
-    kinect_init();
+    //kinect_init();
     mask_rgb_init();
     
     /* Initialize SDL */
@@ -371,10 +377,15 @@ int main(int argc, char *argv[]) {
     glLoadIdentity();
     
     kb_ui_init();
-    kb_ui_register_value_callback("GetData",test_cb);
-    kb_ui_register_void_callback("Exit",cb_exit);
+    
+    // Register callbacks
+    kb_ui_register_void_callback("Exit",exit_callback);
+    kb_ui_register_void_callback("Calibrate",run_calibration_callback);
+    kb_ui_register_void_callback("ImageRight",kb_images_scroll_right);
+    kb_ui_register_void_callback("ImageLeft",kb_images_scroll_left);
+    kb_ui_register_value_callback("SetDistanceThreshold", set_distance_threshold_callback);
 
-    // The CUDA Device Depends on UI (calls a js function)
+    // The CUDA Device Info requires a valid UI since the info is displayed there
     print_cuda_device_info();
 
     /* Allocate textures and buffers to draw into (from the GPU) */

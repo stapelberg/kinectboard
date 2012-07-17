@@ -9,6 +9,9 @@ body {
 table {
 	font-size:10pt;
 }
+td  {
+	vertical-align: middle;
+}
 .btn {
 	display: inline-block;
 	background: url(btn.bg.png) repeat-x 0px 0px;
@@ -38,22 +41,28 @@ table {
 .red:hover	{background-color: #ff004e; color: #ffffff;}
 
 input[type=range]{
-   border: 1px solid #4ba8b1;
-margin: 0px 0px 5px 5px;
-background:-webkit-gradient(linear,center top, center bottom, from(#CFDCDD),to(#DFE9EA),color-stop(50%,#DFE9EA));
-float:left;
-pointer:cursor;
--webkit-appearance:none;
-height:5px;
--webkit-border-radius:5px;
--moz-border-radius:5px;
+	border: 1px solid #4ba8b1;
+	margin: 5px 0px 5px 5px;
+	background:-webkit-gradient(linear,center top, center bottom, from(#CFDCDD),to(#DFE9EA),color-stop(50%,#DFE9EA));
+	float:left;
+	pointer:cursor;
+	-webkit-appearance:none;
+	height:10px;
+	width:170px;
+	-webkit-border-radius:5px;
+	-moz-border-radius:5px;
 }
 input[type=range]::-webkit-slider-thumb
 {
   -webkit-appearance:radio;
    border:1px solid #4ba8b1;
    background:-webkit-gradient(linear,center top, center bottom,from(#11E8E9),to(#E4ECEC),color-stop(50%,#9ED2D1));
-   width:17px;
-   height:17px;
+   width:20px;
+   height:20px;
    opacity:1.0;
+}
+input[type=text] {
+	border:none;
+	background:transparent;
+	color:white;
 }

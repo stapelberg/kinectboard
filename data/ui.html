@@ -16,10 +16,11 @@ function SetRGB(data) {
 	div.style.backgroundColor = "rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")";
 }
 
-function printValue(sliderID, textbox) {
-            var x = document.getElementById(textbox);
-            var y = document.getElementById(sliderID);
-            x.value = y.value;
+function RunDTCallback(sliderID, textbox) {
+    var x = document.getElementById(textbox);
+    var y = document.getElementById(sliderID);
+    x.value = y.value;
+    Kinectboard.SetDistanceThreshold(y.value);
 }
 
 function SetCUDAInfo(info) {
@@ -45,50 +46,63 @@ function SetCUDAInfo(info) {
 	document.getElementById('CudaMemBusKey').innerHTML = cuda[12];
 	document.getElementById('CudaMemBusValue').innerHTML = cuda[13];
 }
+
+function setRightImageLabel(text) {
+	document.getElementById('ImageLabelRight').innerHTML = text;
+}
+
+function setLeftImageLabel(text) {
+	document.getElementById('ImageLabelLeft').innerHTML = text;
+}
+
 </script>
 </head>
 <body>
 <div width=1024 height=300>
 	<div id="topbar">
-	<table border=0>
-	<tr>
-		<td width=80><input type=submit value="<<" onclick="Kinectboard.ImagesLeft();" class=btn /></td>
-		<td width=350><div id="ImageRight" style="font-weight:bold; text-align:center;">Median Image Filtered</div></td>
-		<td> <input type=submit value="Calibrate" onclick="Kinectboard.Calibrate();" class=btn /></td>
-		<td width=350><div id="ImageRight" style="font-weight:bold; text-align:center;">Glow Image</div></td>
-		<td width=80 align=right><input type=submit value=">>" onclick="Kinectboard.ImagesLeft();" class=btn /></td>
-	</tr>
-	</table>
-	</div>
-	<div id="data">Click Retrieve Data ...</div>
-	<table border=0 width=1024><tr><td width=512>
-	<div id="rgb"> COLOR LOL </div>
-	<input id="slider2" type="range" min="-300" max="300" step="50" value ="-300" onchange="printValue('slider2','rangeValue2')">
-	<input id="rangeValue2" type="text" size="2" style="border:none;background:transparent;color:white"/>
-	<br>
-	<input id="slider1" type="range" min="-300" max="300" step="50" value ="-300" onchange="printValue('slider1','rangeValue1')">
-	<input id="rangeValue1" type="text" size="2" style="border:none;background:transparent;color:white"/>
-
-	</div>
-</td><td width=512>
-	<table width=512>
-		<tr><td width=250 id="CudaDeviceKey"></td><td id="CudaDeviceValue"></td></tr>
-		<tr><td width=250 id="CudaCapabilityKey"></td><td id="CudaCapabilityValue"></td></tr>
-		<tr><td width=250 id="CudaMemKey"></td><td id="CudaMemValue"></td></tr>
-		<tr><td width=250 id="CudaMultiprocessorsKey"></td><td id="CudaMultiprocessorsValue"></td></tr>
-		<tr><td width=250 id="CudaGPUClockKey"></td><td id="CudaGPUClockValue"></td></tr>
-		<tr><td width=250 id="CudaMemoryClockKey"></td><td id="CudaMemoryClockValue"></td></tr>
-		<tr><td width=300 id="CudaMemBusKey"></td><td id="CudaMemBusValue"></td></tr>
-	</table>
-</td></tr></table>
+		<table border=0>
+			<tr>
+				<td width=80><input type=submit value="<<" onclick="Kinectboard.ImageLeft();" class=btn /></td>
+				<td width=350><div id="ImageLabelLeft" style="font-weight:bold; text-align:center;">Raw Depth Image</div></td>
+				<td> <input type=submit value="Calibrate" onclick="Kinectboard.Calibrate();" class=btn /></td>
+				<td width=350><div id="ImageLabelRight" style="font-weight:bold; text-align:center;">Median-filtered depth image</div></td>
+				<td width=80 align=right><input type=submit value=">>" onclick="Kinectboard.ImageRight();" class=btn /></td>
+			</tr>
+		</table>
+	</div><br>
+	<table border=0 width=1024>
+		<tr><td width=512>
+		<table border=0>
+			<tr><td colspan=3><b>Parameters</b></td></tr>
+			<tr>
+			<td>Distance Threshold</td>
+			<td valign=middle><input id="sliderDT" type="range" min="0" max="1" step="0.1" value ="0.2" onchange="RunDTCallback('sliderDT','rangeValueDT')"></td>
+			<td><input id="rangeValueDT" type="text" size="2" value="0.2"/></td>
+		</tr>
+		</table>
+	</td>
+	<td width=512>
+		<table width=512>
+			<tr><td width=250 id="CudaDeviceKey"></td><td id="CudaDeviceValue"></td></tr>
+			<tr><td width=250 id="CudaCapabilityKey"></td><td id="CudaCapabilityValue"></td></tr>
+			<tr><td width=250 id="CudaMemKey"></td><td id="CudaMemValue"></td></tr>
+			<tr><td width=250 id="CudaMultiprocessorsKey"></td><td id="CudaMultiprocessorsValue"></td></tr>
+			<tr><td width=250 id="CudaGPUClockKey"></td><td id="CudaGPUClockValue"></td></tr>
+			<tr><td width=250 id="CudaMemoryClockKey"></td><td id="CudaMemoryClockValue"></td></tr>
+			<tr><td width=300 id="CudaMemBusKey"></td><td id="CudaMemBusValue"></td></tr>
+		</table>
+	</td>
+</tr>
+</table><br>
 <table width=1024>
-<tr><td width=200>
-	<input type=submit value="Exit" onclick="Kinectboard.Exit();" class=btn />
-	<input type=submit value="Retrieve Data" onclick="Kinectboard.GetData(1.0);" class=btn />
-	</td><td>
-	<div id="fps" style="width:512px;float:right; width:150px;font-size:10pt;">FPS: ?</div>
-</td>
-</tr></table>
+	<tr>
+		<td width=200>
+			<input type=submit value="Exit" onclick="Kinectboard.Exit();" class=btn />
+		</td><td>
+			<div id="fps" style="width:512px;float:right; width:150px;font-size:10pt;">FPS: ?</div>
+		</td>
+	</tr>
+</table>
 </div>
 </body>
 </html>

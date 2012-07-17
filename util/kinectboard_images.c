@@ -125,10 +125,13 @@ static void fix_areas(void) {
             continue;
     
         img->area = (SDL_Rect){ 0, 0, 640, 480 };
-        img = CIRCLEQ_NEXT(img, image);
-        if (img)
-            img->area = (SDL_Rect){ 640, 0, 640, 480 };
+        kb_ui_call_javascript ("setLeftImageLabel", img->label);
         
+        img = CIRCLEQ_NEXT(img, image);
+        if (img) {
+            kb_ui_call_javascript("setRightImageLabel", img->label);
+            img->area = (SDL_Rect){ 640, 0, 640, 480 };
+        }
         return;
     }
 }
