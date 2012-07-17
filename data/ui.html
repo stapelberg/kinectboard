@@ -14,7 +14,7 @@ function SetFPS(data) {
 }
 
 function SetRGB(data) {
-	var div = document.getElementById( 'rgb' );
+	var div = document.getElementById( 'refColor' );
 	var rgb = data.split(',');
 	div.style.backgroundColor = "rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")";
 }
@@ -106,6 +106,7 @@ function setLeftImageLabel(text) {
 		<table border=0>
 		<tr><td colspan=3><b>Parameters</b></td></tr>
 		<tr><td colspan=3>Median Filter Size: 3x3</td></tr>
+		<tr><td>Reference Color:</td><td colspan=2 id="refColor"></td></tr>
 		<tr>
 			<td>Distance Threshold</td>
 			<td valign=middle><input id="sliderDT" type="range" min="0" max="1" step="0.1" value ="0.2" onchange="RunDTCallback('sliderDT','rangeValueDT')"></td>
