@@ -129,6 +129,29 @@ void kb_images_render() {
     }
 }
 
+void kb_images_render_canvas_only() {
+    glColor4f(1,1,1,1); 
+    kb_image *img;
+    kb_image *img_;
+    CIRCLEQ_FOREACH(img, &image_head, image) {
+        img_ = img; 
+    }
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, img_->bufferID);
+    glBindTexture(GL_TEXTURE_2D, img_->textureID);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+    glBegin(GL_QUADS);
+        glTexCoord2f(0,1);
+        glVertex3f(0, 0, 0.0f);
+        glTexCoord2f(1,1);
+        glVertex3f((GLfloat)SCREEN_WIDTH, 0, 0.0f);
+        glTexCoord2f(1,0);
+        glVertex3f((GLfloat)SCREEN_WIDTH, (GLfloat)SCREEN_HEIGHT, 0.0f);
+        glTexCoord2f(0,0);
+        glVertex3f(0, (GLfloat)SCREEN_HEIGHT, 0.0f);
+    glEnd();    
+}
+
 static void fix_areas(void) {
     kb_image *img;
     int i = 0;

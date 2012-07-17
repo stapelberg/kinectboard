@@ -92,6 +92,7 @@ int DEPTH_MASK_THRESHOLD = 2;
 SDL_Surface *chosen_color_surface;
 
 bool calibration = false;
+bool fullscreen_canvas = false;
 
 static void select_reference_color(int x, int y) {
     float offset = SCREEN_WIDTH/1280.f;
@@ -193,6 +194,9 @@ static void kb_poll_events(void) {
                         break;
                     case SDLK_e:
                         run_calibration_callback();
+                        break;
+                    case SDLK_f:
+                        fullscreen_canvas = !fullscreen_canvas;
                         break;
                     default:
                         printf("Unknown key pressed.\n");
@@ -423,12 +427,14 @@ int main(int argc, char *argv[]) {
         cutilSafeCall(cudaGLUnmapBufferObject(rawRgbBufferID));
         cutilSafeCall(cudaGLUnmapBufferObject(contRgbBufferID));
 
-        kb_images_render();
-
-        kb_ui_update();
-        kb_ui_render();
-
-        SDL_GL_SwapBuffers();
+        if(fullscreen_canvas) {
+           kb_images_render_canvas_only();
+        } else {
+            kb_images_render();
+            kb_ui_update();
+            kb_ui_render();
+        }
+            SDL_GL_SwapBuffers();
         fps++;
     }
 }

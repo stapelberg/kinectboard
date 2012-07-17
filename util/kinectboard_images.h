@@ -46,6 +46,7 @@ typedef struct kb_image {
 void kb_image_create(const char *label, GLuint bufferID, GLuint textureID);
 
 void kb_images_render();
+void kb_images_render_canvas_only();
 
 void kb_images_scroll_left(void);
 void kb_images_scroll_right(void);
