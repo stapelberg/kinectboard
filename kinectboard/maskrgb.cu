@@ -14,12 +14,42 @@ static uint8_t *gpu_rgb_image;
 static uint16_t *gpu_depth_image;
 static uchar4 blank_image[640*480];
 
+__global__ void mask_rgb_gpu(uint8_t *gpu_rgb_image, uchar4 *gpu_raw_rgb_output, float4 reference_color) {
+    const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+    const int i = (y * 640) + x;
+
+    float r = gpu_rgb_image[i * 3 + 0];
+    float g = gpu_rgb_image[i * 3 + 1];
+    float b = gpu_rgb_image[i * 3 + 2];
+
+    gpu_raw_rgb_output[i].w = 0;
+    gpu_raw_rgb_output[i].x = gpu_rgb_image[3 * i + 0];
+    gpu_raw_rgb_output[i].y = gpu_rgb_image[3 * i + 1];
+    gpu_raw_rgb_output[i].z = gpu_rgb_image[3 * i + 2];
+
+    float nom = sqrt((r * r) + (g * g) + (b * b));
+    r /= nom;
+    g /= nom;
+    b /= nom;
+
+    float distance = sqrt(pow((reference_color.z - r), 2) +
+                          pow((reference_color.y - g), 2) +
+                          pow((reference_color.x - b), 2));
+
+    if (distance > 0.2f) {
+        gpu_rgb_image[i * 3 + 0] = 0;
+        gpu_rgb_image[i * 3 + 1] = 0;
+        gpu_rgb_image[i * 3 + 2] = 0;
+    }
+}
+
 /*
  * Translate the coordinates from depth to RGB image, then apply the values
  * from the glow filter as a mask to the RGB image. In gpu_output we will have
  * the RGB values for all areas which are relevant.
  */
-__global__ void mask_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output) {
+__global__ void translate_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, uchar4 *gpu_output) {
     const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     const int i = (y * 640) + x;
@@ -35,11 +65,6 @@ __global__ void mask_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, uchar4 *g
         -7.4423738761617583e-04,
         -1.0916736334336222e-02
     };
-
-    gpu_raw_rgb_output[i].w = 0;
-    gpu_raw_rgb_output[i].x = gpu_rgb_image[3 * i + 0];
-    gpu_raw_rgb_output[i].y = gpu_rgb_image[3 * i + 1];
-    gpu_raw_rgb_output[i].z = gpu_rgb_image[3 * i + 2];
 
     uint16_t depth = gpu_glow[i].z;
     /* Punkte mit Tiefenwert == 0 müssen wir überspringen, denn damit
@@ -85,7 +110,7 @@ void mask_rgb_init(void) {
     memset(blank_image, '\0', 640 * 480 * sizeof(uchar4));
 }
 
-void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output) {
+void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output, float4 reference_color) {
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
 
@@ -95,7 +120,13 @@ void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, u
 
     cudaMemcpy(gpu_output, blank_image, 640*480 * sizeof(uchar4), cudaMemcpyHostToDevice);
 
-    mask_rgb_gpu<<<gridsize, blocksize>>>(gpu_glow_output, gpu_rgb_image, gpu_output, gpu_raw_rgb_output);
+    mask_rgb_gpu<<<gridsize, blocksize>>>(gpu_rgb_image, gpu_raw_rgb_output, reference_color);
+    err = cudaGetLastError();
+    if (err != cudaSuccess)
+        printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));
+
+    cudaThreadSynchronize();
+    translate_rgb_gpu<<<gridsize, blocksize>>>(gpu_glow_output, gpu_rgb_image, gpu_output);
     err = cudaGetLastError();
     if (err != cudaSuccess)
         printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));
