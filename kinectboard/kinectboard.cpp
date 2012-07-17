@@ -194,6 +194,9 @@ static void kb_poll_events(void) {
                     case SDLK_e:
                         run_calibration_callback();
                         break;
+                    case SDLK_c:
+                        mask_rgb_clear_cont();
+                        break;
                     default:
                         printf("Unknown key pressed.\n");
                         break;

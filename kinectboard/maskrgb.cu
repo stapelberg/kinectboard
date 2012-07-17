@@ -143,6 +143,10 @@ void mask_rgb_init(void) {
     cudaMemcpy(gpu_cont_mask, blank_image, 640 * 480 * sizeof(uchar4), cudaMemcpyHostToDevice);
 }
 
+void mask_rgb_clear_cont(void) {
+    cudaMemcpy(gpu_cont_mask, blank_image, 640 * 480 * sizeof(uchar4), cudaMemcpyHostToDevice);
+}
+
 void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output, uchar4 *gpu_cont_rgb_output, float4 reference_color) {
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
