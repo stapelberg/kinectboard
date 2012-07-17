@@ -94,27 +94,29 @@ SDL_Surface *chosen_color_surface;
 bool calibration = false;
 
 static void select_reference_color(int x, int y) {
+    float offset = SCREEN_WIDTH/1280.f;
+
     printf("Handling click on x = %d, y = %d\n", x, y);
     GLuint left_buffer, right_buffer, buffer;
     kb_images_current_buffers(&left_buffer, &right_buffer);
     printf("left texture id = %d, right = %d\n", left_buffer, right_buffer);
     uchar4 *gpu_buffer = NULL;
-    if (x < 640) {
+    if (x < 640*offset) {
         /* The clicked pixel is in the left image */
         buffer = left_buffer;
     } else {
         /* The clicked pixel is in the right image */
         buffer = right_buffer;
-        x -= 640;
+        x -= 640*offset;
     }
     cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_buffer, buffer));
     uchar4 pixel;
-    cudaMemcpy(&pixel, gpu_buffer + (y * 640) + x, sizeof(uchar4), cudaMemcpyDeviceToHost);
+    int offset_pixel = 640*offset;
+    cudaMemcpy(&pixel, gpu_buffer + (y * offset_pixel) + x, sizeof(uchar4), cudaMemcpyDeviceToHost);
     printf("pixel-value: %d, %d, %d (%d)\n", pixel.x, pixel.y, pixel.z, pixel.w);
     static char rgbbuffer[4096];
     snprintf(rgbbuffer, sizeof(rgbbuffer), "%d,%d,%d", pixel.z, pixel.y, pixel.x);
     kb_ui_call_javascript("SetRGB", rgbbuffer);
-    printf("err: %s\n", gluErrorString(glGetError()));
 
     double r = pixel.z;
     double g = pixel.y;
