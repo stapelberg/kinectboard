@@ -155,10 +155,10 @@ void ui_javascript_callback_funct(awe_webview* caller, const awe_string* object_
                                              const awe_jsarray* arguments) {
     printf("DEBUG: Received Callback: ");
     fflush(stdout);
-    size_t size =awe_string_to_utf8(callback_name, NULL, 0);
 
-    char* buf = (char*)malloc(size);
-    awe_string_to_utf8(callback_name, buf, size);
+    size_t size =awe_string_to_utf8(callback_name, NULL, 0);
+    char* buf = (char*)calloc(size+1,1);
+    awe_string_to_utf8(callback_name, buf, size+1);
 
     printf("%s\n", buf);
     fflush(stdout);
@@ -169,6 +169,7 @@ void ui_javascript_callback_funct(awe_webview* caller, const awe_string* object_
         free(buf);
         return;
     }
+
     do {
        if(strcmp(next->funct_name, buf) == 0) {
             // Void Callbacks
