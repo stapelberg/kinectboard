@@ -173,7 +173,7 @@ static void kb_poll_events(void) {
                 kb_ui_inject_mouse_button(event.button.button, false);
                 break;
             case SDL_MOUSEBUTTONDOWN:
-                if (event.button.y < 480) {
+                if (event.button.y < 480 * (SCREEN_WIDTH/1280.f)) {
                     select_reference_color(event.button.x, event.button.y);
                 } else {
                     kb_ui_inject_mouse_button(event.button.button, true);
