@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
 
     median_filter_init();
     glow_filter_init();
-    //kinect_init();
+    kinect_init();
     mask_rgb_init();
     
     /* Initialize SDL */
