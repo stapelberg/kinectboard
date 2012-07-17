@@ -10,7 +10,9 @@
 
 extern int SCREEN_WIDTH;
 // kinect image height (480) + space for controls
-#define SCREEN_HEIGHT 480 + 300
+static int VIEWPORT_WIDTH;
+static int VIEWPORT_HEIGHT;
+static int SCREEN_HEIGHT;
 #define SCREEN_DEPTH 32
 
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
@@ -41,6 +43,11 @@ static int queue_size = 0;
 /* KB (RGB) Image */
 
 void kb_image_create(const char *label, GLuint bufferID, GLuint textureID) {
+    float factor = SCREEN_WIDTH/1280.f;
+    VIEWPORT_WIDTH = 640*factor;
+    VIEWPORT_HEIGHT = 480*factor;
+    SCREEN_HEIGHT = 768;
+
     kb_image *new_img = calloc(sizeof(kb_image), 1);
     new_img->label = label;
     new_img->bufferID = bufferID;
@@ -59,8 +66,8 @@ void kb_image_create(const char *label, GLuint bufferID, GLuint textureID) {
      * Bildschirm). Wenn der Nutzer scrolled, werden die areas ohnehin neu
      * berechnet. */
     if (!CIRCLEQ_EMPTY(&image_head))
-        new_img->area = (SDL_Rect){ 640, 0, 640, 480 };
-    else new_img->area = (SDL_Rect){ 0, 0, 640, 480 };
+        new_img->area = (SDL_Rect){ VIEWPORT_WIDTH, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT };
+    else new_img->area = (SDL_Rect){ 0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT };
 
     CIRCLEQ_INSERT_TAIL(&image_head, new_img, image);
     queue_size++;
@@ -81,10 +88,10 @@ void kb_images_render() {
  
         if (animation_step > 0 && cnt == 0) {
             area = img->area;
-            area.x -= (640-animation_step); 
+            area.x -= (VIEWPORT_WIDTH-animation_step); 
         } else if (animation_step < 0 && cnt == 2) {
             area = img->area;
-            area.x += (640-(-1*animation_step));
+            area.x += (VIEWPORT_WIDTH-(-1*animation_step));
         } else {
             area = img->area;
             area.x += animation_step;
@@ -106,11 +113,12 @@ void kb_images_render() {
         glBindTexture(GL_TEXTURE_2D, img->textureID);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
+
         glBegin(GL_QUADS);
-            glTexCoord2f(0.0f, 1.0f);   glVertex2f(area.x, 300.0f);
+            glTexCoord2f(0.0f, 1.0f);   glVertex2f(area.x, SCREEN_WIDTH == 1024 ? 384.f : 288.0f);
             glTexCoord2f(0.0f, 0.0f);   glVertex2f(area.x, SCREEN_HEIGHT * 1.0f);
-            glTexCoord2f(1.0f, 0.0f);   glVertex2f(area.x + 640, SCREEN_HEIGHT * 1.0f);
-            glTexCoord2f(1.0f, 1.0f);   glVertex2f(area.x + 640, 300.0f);
+            glTexCoord2f(1.0f, 0.0f);   glVertex2f(area.x + VIEWPORT_WIDTH, SCREEN_HEIGHT * 1.0f);
+            glTexCoord2f(1.0f, 1.0f);   glVertex2f(area.x + VIEWPORT_WIDTH, SCREEN_WIDTH == 1024 ? 384.f : 288.0f);
         glEnd();
 
         if (animation_step != 0) {
@@ -129,13 +137,13 @@ static void fix_areas(void) {
         if (i++ < startidx)
             continue;
     
-        img->area = (SDL_Rect){ 0, 0, 640, 480 };
+        img->area = (SDL_Rect){ 0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT };
         kb_ui_call_javascript ("setLeftImageLabel", img->label);
         
         img = CIRCLEQ_NEXT(img, image);
         if (img) {
             kb_ui_call_javascript("setRightImageLabel", img->label);
-            img->area = (SDL_Rect){ 640, 0, 640, 480 };
+            img->area = (SDL_Rect){ VIEWPORT_WIDTH, 0, VIEWPORT_WIDTH,  VIEWPORT_HEIGHT };
         }
         return;
     }
@@ -149,7 +157,7 @@ void kb_images_scroll_left(void) {
 
     fix_areas();
     animation_direction = A_FROM_LEFT_TO_RIGHT;
-    animation_step = -640;
+    animation_step = -VIEWPORT_WIDTH;
 }
 
 void kb_images_scroll_right(void) {
@@ -159,7 +167,7 @@ void kb_images_scroll_right(void) {
 
     fix_areas();
     animation_direction = A_FROM_RIGHT_TO_LEFT;
-    animation_step = 640;
+    animation_step = VIEWPORT_WIDTH;
 }
 
 void kb_images_current_buffers(GLuint *left, GLuint *right) {

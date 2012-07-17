@@ -48,7 +48,7 @@
 #include <drvapi_error_string.h>
 
 // kinect image height (480) + space for controls
-#define SCREEN_HEIGHT 480 + 300
+#define SCREEN_HEIGHT 480 + 288
 #define SCREEN_DEPTH 32
 
 int SCREEN_WIDTH = 1280;

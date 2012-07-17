@@ -27,9 +27,8 @@ static pthread_mutex_t rendermutex = PTHREAD_MUTEX_INITIALIZER;
 #include <limits.h>
 
 extern int SCREEN_WIDTH;
-// kinect image height (480) + space for controls
-#define SCREEN_HEIGHT 300
-#define SCREEN_OFFSET 480
+static int SCREEN_OFFSET;
+static int SCREEN_HEIGHT;
 #define SCREEN_DEPTH 4
 #define URL "../data/ui.html" 
 #define JSOBJECT "Kinectboard"
@@ -218,6 +217,8 @@ void kb_ui_call_javascript(const char* function, const char* argv) {
 /* ************************************************************************* */
 void kb_ui_init() {
     obj_str = awe_string_create_from_ascii(JSOBJECT, strlen(JSOBJECT));
+    SCREEN_OFFSET = SCREEN_WIDTH == 1024 ? 384 : 480;
+    SCREEN_HEIGHT = SCREEN_WIDTH == 1024 ? 384 : 288;
 
     callback_table.size = 0;
     callback_table.head = 0;
