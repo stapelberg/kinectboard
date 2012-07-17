@@ -1,31 +1,10 @@
-// vim:ts=4:sw=4:expandtab
 /*
- * This file is part of the OpenKinect Project. http://www.openkinect.org
+ * vim:ts=4:sw=4:expandtab
  *
- * Copyright (c) 2010 individual OpenKinect contributors. See the CONTRIB file
- * for details.
+ * kinectboard © 2012 Michael Stapelberg, Felix Bruckner, Pascal Krause
+ * See LICENSE for licensing details.
  *
- * This code is licensed to you under the terms of the Apache License, version
- * 2.0, or, at your option, the terms of the GNU General Public License,
- * version 2.0. See the APACHE20 and GPL2 files for the text of the licenses,
- * or the following URLs:
- * http://www.apache.org/licenses/LICENSE-2.0
- * http://www.gnu.org/licenses/gpl-2.0.txt
- *
- * If you redistribute this file in source form, modified or unmodified, you
- * may:
- *   1) Leave this header intact and distribute it under the same terms,
- *      accompanying it with the APACHE20 and GPL20 files, or
- *   2) Delete the Apache 2.0 clause and accompany it with the GPL2 file, or
- *   3) Delete the GPL v2 clause and accompany it with the APACHE20 file
- * In all cases you must keep the copyright notice intact and include a copy
- * of the CONTRIB file.
- *
- * Binary distributions must follow the binary distribution requirements of
- * either License.
  */
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -94,9 +73,7 @@ extern int ANIMATION_ONE_STEP;
 
 // Die Referenz-Farbe (vom Nutzer ausgewählt). Wird normiert gespeichert:
 // Jeder Farbanteil wird durch √(r² + g² + b²) geteilt.
-double reference_r = -1;
-double reference_g = -1;
-double reference_b = -1;
+float4 reference_color = { -1, -1, -1, -1 };
 
 double FILTER_DISTANCE = 0.2f;
 
@@ -105,130 +82,6 @@ double DEPTH_MASK_MULTIPLIER = 0.0f;
 int DEPTH_MASK_THRESHOLD = 2;
 
 SDL_Surface *chosen_color_surface;
-
-#if 0
-void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
-{
-    // swap buffers
-    assert (rgb_back == rgb);
-    rgb_back = rgb_mid;
-    freenect_set_video_buffer(dev, rgb_back);
-    rgb_mid = (uint8_t*)rgb;
-
-    /* Wenn es eine Referenzefarbe gibt, filtern wir das Farbbild. */
-    if (reference_r != -1) {
-        int i;
-        for (i = 0; i < 640 * 480; i++) {
-            double r = rgb_mid[3 * i + 0];
-            double g = rgb_mid[3 * i + 1];
-            double b = rgb_mid[3 * i + 2];
-
-            double nom = sqrt((r * r) + (g * g) + (b * b));
-            r /= nom;
-            g /= nom;
-            b /= nom;
-
-            /* depth_mid ist das Tiefenbild. */
-            double distance = sqrt(pow((reference_r - r), 2) + pow((reference_g - g), 2) + pow((reference_b - b), 2));
-
-            //printf("median_filtered = %d\n", depth_median_filtered[i]);
-            distance += (depth_median_filtered[i] / 255.0) * DEPTH_MASK_MULTIPLIER;
-
-            if (distance > FILTER_DISTANCE) {
-                pushrgb(rgb, i, 0, 0, 0);
-            }
-        }
-    }
-
-    static CvMat *rotationsmatrix = NULL;
-    static CvMat *translationsmatrix = NULL;
-    static CvMat *result = NULL;
-    static CvMat *P3D = NULL;
-    if (!rotationsmatrix) {
-        rotationsmatrix = cvCreateMat(3, 3, CV_32FC1);
-
-        CV_MAT_ELEM(*rotationsmatrix, float, 0, 0) = 9.9984628826577793e-01;
-        CV_MAT_ELEM(*rotationsmatrix, float, 0, 1) = 1.2635359098409581e-03;
-        CV_MAT_ELEM(*rotationsmatrix, float, 0, 2) = -1.7487233004436643e-02;
-
-        CV_MAT_ELEM(*rotationsmatrix, float, 1, 0) = -1.4779096108364480e-03;
-        CV_MAT_ELEM(*rotationsmatrix, float, 1, 1) = 9.9992385683542895e-01;
-        CV_MAT_ELEM(*rotationsmatrix, float, 1, 2) = -1.2251380107679535e-02;
-
-        CV_MAT_ELEM(*rotationsmatrix, float, 2, 0) = 1.7470421412464927e-02;
-        CV_MAT_ELEM(*rotationsmatrix, float, 2, 1) = 1.2275341476520762e-02;
-        CV_MAT_ELEM(*rotationsmatrix, float, 2, 2) = 9.9977202419716948e-01;
-    }
-
-    if (!translationsmatrix) {
-        translationsmatrix = cvCreateMat(3, 1, CV_32FC1);
-
-        CV_MAT_ELEM(*translationsmatrix, float, 0, 0) = 1.9985242312092553e-02;
-        CV_MAT_ELEM(*translationsmatrix, float, 1, 0) = -7.4423738761617583e-04;
-        CV_MAT_ELEM(*translationsmatrix, float, 2, 0) = -1.0916736334336222e-02;
-    }
-
-    if (!P3D)
-        P3D = cvCreateMat(3, 1, CV_32FC1);
-
-    if (!result)
-        result = cvCreateMat(3, 1, CV_32FC1);
-
-    int col, row, i;
-    for (i = 0; i < (640*480); i++) {
-        pushrgb(rgb_masked, i, 250, 250, 0);
-    }
-    for (row = 0; row < (480); row++) {
-        for (col = 0; col < 640; col++) {
-            i = row * 640 + col;
-            int depth = glow_mid[3 * i + 0];
-            if (depth == 0)
-                continue;
-
-            /* Koordinaten umrechnen in Koordinaten auf dem RGB-Bild */
-            // X
-            CV_MAT_ELEM(*P3D, float, 0, 0) = ((col - 3.3930780975300314e+02) * depth) / 5.9421434211923247e+02;
-            // Y
-            CV_MAT_ELEM(*P3D, float, 1, 0) = ((row - 2.4273913761751615e+02) * depth) / 5.9104053696870778e+02;
-            // depth
-            CV_MAT_ELEM(*P3D, float, 2, 0) = depth;
-
-            cvMatMul(rotationsmatrix, P3D, result);
-            cvAdd(result, translationsmatrix, result, NULL);
-
-            double xb = (CV_MAT_ELEM(*result, float, 0, 0) * 5.2921508098293293e+02 / CV_MAT_ELEM(*result, float, 2, 0)) + 3.2894272028759258e+02;
-            double yb = (CV_MAT_ELEM(*result, float, 1, 0) * 5.2556393630057437e+02 / CV_MAT_ELEM(*result, float, 2, 0)) + 2.6748068171871557e+02;
-
-            int di = ((int)yb * 640) + (int)xb;
-            if (glow_mid[3 * i + 1] != 255 && glow_mid[3 * i + 1] != 0) {
-                pushrgb(rgb_masked, i, rgb_mid[3 * di + 0], rgb_mid[3 * di + 1], rgb_mid[3 * di + 2]);
-            } else {
-                pushrgb(rgb_masked, i, 255, 0, 0);
-            }
-        }
-    }
-#endif
-#if 0
-    /* RGB-Bild maskieren */
-    int col, row, i;
-    for (row = 0; row < (480); row++) {
-        for (col = 0; col < 640; col++) {
-            i = row * 640 + col;
-
-            if (glow_mid[3 * i + 1] != 255 && glow_mid[3 * i + 1] != 0) {
-                pushrgb(rgb_masked, i, rgb_mid[3 * i + 0], rgb_mid[3 * i + 1], rgb_mid[3 * i + 2]);
-            } else {
-                pushrgb(rgb_masked, i, 255, 0, 0);
-            }
-
-        }
-    }
-
-    /* Buffer austauschen (double-buffering) */
-    swap_buffer(rgb);
-    swap_buffer(rgb_masked);
-}
-#endif
 
 bool calibration = false;
 
@@ -254,6 +107,16 @@ static void select_reference_color(int x, int y) {
     snprintf(rgbbuffer, sizeof(rgbbuffer), "%d,%d,%d", pixel.z, pixel.y, pixel.x);
     kb_ui_call_javascript("SetRGB", rgbbuffer);
     printf("err: %s\n", gluErrorString(glGetError()));
+
+    double r = pixel.z;
+    double g = pixel.y;
+    double b = pixel.x;
+    double nominator = sqrt((r * r) + (g * g) + (b * b));
+    printf("nominator = %f\n", nominator);
+    reference_color.x = r / nominator;
+    reference_color.y = g / nominator;
+    reference_color.z = b / nominator;
+
     cutilSafeCall(cudaGLUnmapBufferObject(buffer));
 }
 
@@ -471,7 +334,7 @@ int main(int argc, char *argv[]) {
         median_mask(calibration, gpu_median_output, gpu_masked_median_output);
         glow_filter(gpu_masked_median_output, gpu_glow_output);
 
-        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output);
+        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output, reference_color);
         done_rgb_image();
 
         cutilSafeCall(cudaGLUnmapBufferObject(maskedMedianBufferID));
