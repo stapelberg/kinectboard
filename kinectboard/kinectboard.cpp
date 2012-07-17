@@ -250,6 +250,9 @@ static void select_reference_color(int x, int y) {
     uchar4 pixel;
     cudaMemcpy(&pixel, gpu_buffer + (y * 640) + x, sizeof(uchar4), cudaMemcpyDeviceToHost);
     printf("pixel-value: %d, %d, %d (%d)\n", pixel.x, pixel.y, pixel.z, pixel.w);
+    static char rgbbuffer[4096];
+    snprintf(rgbbuffer, sizeof(rgbbuffer), "%d,%d,%d", pixel.z, pixel.y, pixel.x);
+    kb_ui_call_javascript("SetRGB", rgbbuffer);
     printf("err: %s\n", gluErrorString(glGetError()));
     cutilSafeCall(cudaGLUnmapBufferObject(buffer));
 }
