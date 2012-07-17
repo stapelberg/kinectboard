@@ -1,131 +1,132 @@
-\documentclass{beamer}
-%\documentclass[draft]{beamer} %Zum schnelleren Kompilieren beim Entwickeln
-%\documentclass[notes=show]{beamer}
-\usepackage[utf8]{inputenc}
-\usepackage{ngerman}
-\usepackage{rotating}
-\usepackage{verbatim}
-\usepackage{latexsym}
-\usepackage{color}
-\usepackage{graphicx}
-\usepackage{tabularx}
-\usepackage{ragged2e}
-\usepackage{eurosym}
-\definecolor{boxgray}{gray}{0.88}
-\selectlanguage{german}
-
+% vim:ts=4:sw=4:expandtab
+\documentclass[compress]{beamer}
+\usepackage{fontspec}
 \usepackage{listings}
-\definecolor{listinggray}{gray}{0.94}
-\lstset{backgroundcolor=\color{listinggray}}
+\usepackage{tikz}
+\usepackage[labelformat=empty]{caption}
 
-\usetheme{Frankfurt}
+\setmainfont{Trebuchet MS}
+%\setmonofont{Inconsolata}
+\setmonofont[SmallCapsFont={DejaVu Sans Mono}]{DejaVu Sans Mono}
+\usetheme{default}
 
+% white-ish on black-ish
+\definecolor{myblack}{rgb}{1,1,1}
+\definecolor{mywhite}{rgb}{0,0,0}
 
-
-% LaTeX-interne Einstellungen zum Umbruch etc.
-% \nofiles    % Inhaltsverzeichnis nicht ändern.
-\hbadness 10000
-\sloppy
-\frenchspacing
-
-\usecolortheme{default}
-% das ist die leiste mit dem frametitel
-\setbeamercolor{palette primary}{use=structure,fg=white,bg=orange}
-%Das ist die leiste ganz oben
-\setbeamercolor{palette quaternary}{fg=orange,bg=black}
-
-\newcolumntype{Y}{>{\centering\arraybackslash}X}%
-\newcolumntype{Z}{>{\hfill\arraybackslash}X}%
-
-\usepackage{amsmath,amssymb}
-
-\setbeamercovered{dynamic}
-
-%notes:
-\setbeamertemplate{note page}[plain] 
-%compressed
-
-
-% Metadaten von Vortrag
-\newcommand{\datum}{2012-07-19}
-\newcommand{\autor}{Michael Stapelberg, Felix Bruckner, Pascal Krause}
-\newcommand{\vorlesung}{Parallele Rechnerarchitekturen}
-\newcommand{\semester}{SS2012}
-\newcommand{\ort}{Hochschule Mannheim}
-
-\title[]{SRA/ALR Prüfung\\ \ort}
-\author{\autor}
-\institute{Fakultät für Informatik\\
-           Hochschule Mannheim\\}
-\date{\datum}
-\beamertemplatetransparentcovereddynamic
-\setbeamerfont{note page}{size=\small}
-%\renewcommand{\>}{\rangle}
-%\newcommand{\<}{\langle} 
-%\usebeamercolor[fg]{[page number]}
-
-\setbeamertemplate{navigation symbols}{}
-%\setbeamertemplate{note page}{}
-
-%Zum Abschalten der kleinen Navigationsleiste am unteren Rand reicht folgende Zeile aus:
-%\beamertemplatenavigationsymbolsempty
-
-\setbeamersize{text margin left=0.2cm}
-\setbeamersize{text margin right=0.25cm}
-\setbeamersize{sidebar width right=0cm}
-\setbeamersize{sidebar width left=0cm}
-
-%Inhalt der Fußzeile festlegen
-\setbeamertemplate{footline}
-{
-\setbeamercolor{bgcolor}{fg=black,bg=white}
-\begin{beamercolorbox}{bgcolor}
-\hspace*{0.2cm}
-% \copyright 
-\autor\ -- \vorlesung\ -- \ort\ -- \semester
-\hfill
-%  \insertslidenavigationsymbol
-%  \insertframenavigationsymbol
-%  \insertsubsectionnavigationsymbol
-%  \insertsectionnavigationsymbol
-%  \insertdocnavigationsymbol
-%  \insertbackfindforwardnavigationsymbol
- \hfill\insertframenumber/\inserttotalframenumber
- \hspace*{0.2cm}
-\end{beamercolorbox}
-
+\setbeamertemplate{frametitle}{
+    \color{mywhite}
+    \vspace*{0.5cm}
+    \hspace*{0.25cm}
+    \textbf{\insertframetitle}
+    \par
 }
 
-%\newcommand{\markNote}[1]{	\textsuperscript{\tiny [#1]} }
-\newcommand{\markNote}[1]{	 }
+\setbeamercolor{background canvas}{bg=myblack}
+\setbeamercolor{normal text}{fg=mywhite}
 
-% Bei jeder Section ein Inhaltsverzeichnis ausgeben
- \AtBeginSection[]{
- \begin{frame}
- %\frametitle{Outline}
- \tableofcontents[current] % Nur die sections ausgeben
- \end{frame}
- }
+% Hide the navigation icons at the bottom of the page
+\setbeamertemplate{navigation symbols}{}
+% Slide numbers at the bottom of the page
+\setbeamerfont{footline}{size=\fontsize{9}{11}\selectfont}
+\setbeamertemplate{footline}[frame number]
 
-% Die Zeile definieren, die ganz oben ist und die Abschnitte enthält
-% Das sind die Maße wenn es die Folie "nächste Vorlesung gibt"
-% \setbeamertemplate{headline}
-% {%
-%   \begin{beamercolorbox}{section in head/foot}
-%     \vskip5pt\insertnavigation{12.4cm}\vskip5pt
-%   \end{beamercolorbox}%
-% }
+\definecolor{darkblue}{rgb}{0,0,.6}
+\definecolor{darkred}{rgb}{.6,0,0}
+\definecolor{darkgreen}{rgb}{0,.6,0}
+\definecolor{darkgray}{gray}{.3}
+\definecolor{lightblue}{rgb}{0.97,0.99,1}
+\definecolor{myblue}{rgb}{0.62,0.80,0.96}
+\definecolor{mystring}{rgb}{0.74,0.76,0.41}
+\lstdefinestyle{colors}{%
+    keywordstyle={\bf\color{darkblue}},%
+    commentstyle={\em\color{myblue}},%
+    stringstyle={\color{mystring}},%
+    emphstyle={\color{darkgray}}}
+\lstset{language=C,style=colors,inputencoding=utf8,extendedchars=true,texcl,escapechar=\|,basicstyle=\small\ttfamily,keywordstyle=\bfseries,numbers=none,numberblanklines=false,showstringspaces=false,breaklines=true,numberstyle=\small\ttfamily,xleftmargin=\parindent,xrightmargin=1em,linewidth=0.98\linewidth}
 
-%\setbeamertemplate{headline}
-%{%
-%  \begin{beamercolorbox}{section in head/foot}
-%    \vskip5pt\insertnavigation{12.75cm}\vskip5pt
-%  \end{beamercolorbox}%
+
+%% Metadaten von Vortrag
+%\newcommand{\datum}{2012-07-19}
+%\newcommand{\autor}{Michael Stapelberg, Felix Bruckner, Pascal Krause}
+%\newcommand{\vorlesung}{Parallele Rechnerarchitekturen}
+%\newcommand{\semester}{SS2012}
+%\newcommand{\ort}{Hochschule Mannheim}
+%
+\title{„kinectboard“ — Objekt-Tracking\\mit CUDA und Kinect}
+\author{Michael Stapelberg, Felix Bruckner, Pascal Krause}
+\institute{Fakultät für Informatik\\
+           Hochschule Mannheim\\}
+\date{2012-07-19}
+%\beamertemplatetransparentcovereddynamic
+%\setbeamerfont{note page}{size=\small}
+%%\renewcommand{\>}{\rangle}
+%%\newcommand{\<}{\langle} 
+%%\usebeamercolor[fg]{[page number]}
+%
+%\setbeamertemplate{navigation symbols}{}
+%%\setbeamertemplate{note page}{}
+%
+%%Zum Abschalten der kleinen Navigationsleiste am unteren Rand reicht folgende Zeile aus:
+%%\beamertemplatenavigationsymbolsempty
+%
+%\setbeamersize{text margin left=0.2cm}
+%\setbeamersize{text margin right=0.25cm}
+%\setbeamersize{sidebar width right=0cm}
+%\setbeamersize{sidebar width left=0cm}
+%
+%%Inhalt der Fußzeile festlegen
+%\setbeamertemplate{footline}
+%{
+%\setbeamercolor{bgcolor}{fg=black,bg=white}
+%\begin{beamercolorbox}{bgcolor}
+%\hspace*{0.2cm}
+%% \copyright 
+%\autor\ -- \vorlesung\ -- \ort\ -- \semester
+%\hfill
+%%  \insertslidenavigationsymbol
+%%  \insertframenavigationsymbol
+%%  \insertsubsectionnavigationsymbol
+%%  \insertsectionnavigationsymbol
+%%  \insertdocnavigationsymbol
+%%  \insertbackfindforwardnavigationsymbol
+% \hfill\insertframenumber/\inserttotalframenumber
+% \hspace*{0.2cm}
+%\end{beamercolorbox}
+%
 %}
-
-\begin{document}
-
+%
+%%\newcommand{\markNote}[1]{	\textsuperscript{\tiny [#1]} }
+%\newcommand{\markNote}[1]{	 }
+%
+%% Bei jeder Section ein Inhaltsverzeichnis ausgeben
+% \AtBeginSection[]{
+% \begin{frame}
+% %\frametitle{Outline}
+% \tableofcontents[current] % Nur die sections ausgeben
+% \end{frame}
+% }
+%
+%% Die Zeile definieren, die ganz oben ist und die Abschnitte enthält
+%% Das sind die Maße wenn es die Folie "nächste Vorlesung gibt"
+%% \setbeamertemplate{headline}
+%% {%
+%%   \begin{beamercolorbox}{section in head/foot}
+%%     \vskip5pt\insertnavigation{12.4cm}\vskip5pt
+%%   \end{beamercolorbox}%
+%% }
+%
+%%\setbeamertemplate{headline}
+%%{%
+%%  \begin{beamercolorbox}{section in head/foot}
+%%    \vskip5pt\insertnavigation{12.75cm}\vskip5pt
+%%  \end{beamercolorbox}%
+%%}
+%
+%\begin{document}
+%
 % Deckblatt generieren
+\begin{document}
 \begin{frame}
 \titlepage
 \end{frame}
@@ -143,9 +144,7 @@
 \begin{frame}
 \frametitle{Projektidee: Objekttracing}
 
-\hspace*{0,3cm}{Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.}
-
-\vspace*{0,8cm}
+Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 
 \begin{itemize}
 	\item Schwierigkeiten
@@ -298,9 +297,6 @@
 
 {\Large $S(p)=\frac{\text{Ausführungszeit\, SingleCore}}{\text{Ausführungszeit\, MultiCore}}$}
 \vspace*{0.4cm}
-\setbeamercolor{block title}{bg=black,fg=orange}%bg=background, fg= foreground
-\setbeamercolor{block body}{bg=boxgray,fg=black}%bg=background, fg= foreground
-\begin{block}{Rechenzeit Tabelle}
 	\begin{table}
 		\begin{tabular}{|l|l|l|}
 		\hline
@@ -310,7 +306,6 @@
 		GPU & 1,5 Milisekunden & ? Mikrosekunden \\ \hline
 		\end{tabular}
 	\end{table}
-\end{block}
 \vspace*{0.4cm}
 {\large
 \begin{itemize}
@@ -321,7 +316,237 @@
 
 \end{frame}
 
-\section{Portierung auf GPU}
+\begin{frame}{Median-Filter: Überblick}
+    \newcounter{overviewstep}
+    \begin{list}{\arabic{overviewstep}.}{\usecounter{overviewstep}\itemsep=1em}
+        \item Host: Bilddaten auf die Grafikkarte kopieren, Kernel starten
+        \item Index berechnen, (umliegende) Pixel-Werte lesen
+        \item Median-Filter anwenden
+        \item Pixel-Wert umwandeln in RGB-Wert
+        \item Ausgabe-Pixel schreiben
+        \item Host: Bild anzeigen
+    \end{list}
+\end{frame}
+
+\begin{frame}[fragile]{Wert lesen und umrechnen (readpixel0)}
+\begin{lstlisting}
+__global__ void median(uint16_t *depth,
+    uint8_t *table, uint8_t *output)
+{
+  int x = blockIdx.x * blockDim.x + threadIdx.x;
+  int y = blockIdx.y * blockDim.y + threadIdx.y;
+  int i = (y * 640) + x;
+
+  // Pixel in RGB wandeln
+  int conv = table[depth[i]];
+
+  // Makro, welches output[i], output[i+1] und output[i+2] setzt.
+  pushrgb(output, i, conv);
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Wert lesen und umrechnen (readpixel0)}
+\includegraphics[width=\textwidth]{readpixel0.pdf}
+\end{frame}
+
+\begin{frame}[fragile]{Wert lesen und umrechnen (readpixel0/1)}
+\includegraphics[width=\textwidth]{readpixel01.pdf}
+\end{frame}
+
+\begin{frame}[fragile]{Wert lesen und umrechnen (readpixel1)}
+\begin{lstlisting}
+texture<uint16_t, 2> depthT;
+texture<uint8_t, 2> tableT;
+
+__global__ void median(uint8_t *output) {
+  // x, y, i wie zuvor
+  int c = tex2D(tableT, tex2D(depthT, x, y), 1);
+  pushrgb(output, i, c);
+}
+
+// memcpy table und depth
+
+cudaChannelFormatDesc desc = cudaCreateChannelDesc<uint16_t>();
+cudaBindTexture2D(NULL, &depthT, depth, &desc, 640, 480, 640 * sizeof(uint16_t));
+desc = cudaCreateChannelDesc<uint8_t>();
+cudaBindTexture2D(NULL, &tableT, table, &desc, 2048, 1, 2048 * sizeof(uint8_t));
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Wert lesen und umrechnen (readpixel0/1/2)}
+\includegraphics[width=\textwidth]{readpixel12.pdf}
+\end{frame}
+
+
+\begin{frame}[fragile]{Wert lesen und umrechnen (readpixel2)}
+\begin{lstlisting}
+texture<uint16_t, 2> depthT;
+texture<uint8_t, 2> tableT;
+
+__global__ void median(uint8_t *output) {
+  // x, y, i wie zuvor
+  int d = tex2D(depthT, x, y);
+  int c = (float)(2048 * 256) / (d - 2048);
+
+  pushrgb(output, i, c);
+}
+
+// memcpy table und depth
+// cudaBindTexture2D wie zuvor
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Median-Filter (median3)}
+\begin{lstlisting}
+__global__ void median(uint8_t *output) {
+  // x, y, i wie zuvor
+  int neigh[25], ic, ir, ni = 0;
+  for (ic  = (x - (5 / 2));
+       ic <= (x + (5 / 2));
+       ic++) {
+    for (ir  = (y - (5 / 2));
+         ir <= (y + (5 / 2));
+         ir++) {
+      neigh[ni++] = tex2D(depthT, ic, ir);
+    }
+  }
+
+  // quick\_select aus "Numerical recipes in C"
+  int c = (float)(2048 * 256) / (quick_select(neigh, 25) - 2048);
+  pushrgb(output, i, c);
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Median-Filter (median3)}
+\includegraphics[width=\textwidth]{median3.pdf}
+\end{frame}
+
+\begin{frame}[fragile]{Median-Filter (median3/5)}
+\includegraphics[width=\textwidth]{median35.pdf}
+\end{frame}
+
+
+\begin{frame}[fragile]{Median-Filter (median5)}
+\begin{lstlisting}
+__global__ void median(uint8_t *output) {
+  __shared__ float smem[BLOCK_X][BLOCK_Y];
+  smem[threadIdx.x][threadIdx.y] = tex2D(depthT, x, y);
+  __syncthreads();
+
+  int neigh[25], ic, ir, ni = 0;
+  for (ic  = (threadIdx.x - (5 / 2));
+       ic <= (threadIdx.x + (5 / 2));
+       ic++) {
+    for (ir  = (threadIdx.y - (5 / 2));
+         ir <= (threadIdx.y + (5 / 2));
+         ir++) {
+      neigh[ni++] = smem[ic][ir];
+    }
+  }
+
+  // quick\_select wie zuvor
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Median-Filter (median5/8)}
+\includegraphics[width=\textwidth]{median58.pdf}
+\end{frame}
+
+\begin{frame}[fragile]{Median-Filter (median8)}
+\begin{lstlisting}
+__global__ void median(uint8_t *output) {
+    int ic, ir, ni = 0;
+    float neigh[9], ma, mi;
+    for (ic = (x - 1); ic <= (x + 1); ic++) {
+      for (ir = (y - 1); ir <= (y + 1); ir++) {
+        neigh[ni++] = tex2D(depthT, ic, ir);
+      }
+    }
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < (8-i); j++) {
+        ma = fmaxf(neigh[j], neigh[j+1]);
+        mi = fminf(neigh[j], neigh[j+1]);
+        neigh[j] = mi;
+        neigh[j+1] = ma;
+      }
+    }
+    int c = (float)(2048 * 256) / (neigh[9/2] - 2048.0);
+}
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}[fragile]{Median-Filter (median8/8u)}
+\includegraphics[width=\textwidth]{median88u.pdf}
+\end{frame}
+
+\begin{frame}[fragile]{Median-Filter, PTX (median8)}
+\lstset{basicstyle=\tiny\ttfamily}
+\begin{lstlisting}
+$Lt_0_5634:
+ //<loop> Loop body line 89, nesting depth: 1, iterations: 8
+    mov.u32     %r58, 0;
+    setp.le.s32     %p1, %r57, %r58;
+    @%p1 bra    $Lt_0_5890;
+    mov.s32     %r59, %r57;
+    mov.u64     %rd1, __cuda___cuda_local_var_19377_11_non_const_nneighbors_1624;
+    mov.s32     %r60, 0;
+    mov.s32     %r61, %r59;
+$Lt_0_6402:
+ //<loop> Loop body line 89, nesting depth: 2, estimated iterations: unknown
+    .loc    16  96  0
+    ld.local.f32    %f70, [%rd1+0];
+    ld.local.f32    %f71, [%rd1+4];
+    max.f32     %f72, %f70, %f71;
+    .loc    16  98  0
+    min.f32     %f73, %f70, %f71;
+    st.local.f32    [%rd1+0], %f73;
+    .loc    16  99  0
+    st.local.f32    [%rd1+4], %f72;
+    add.s32     %r60, %r60, 1;
+    add.u64     %rd1, %rd1, 4;
+    setp.ne.s32     %p2, %r57, %r60;
+    @%p2 bra    $Lt_0_6402;
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Median-Filter (median8)}
+\lstset{basicstyle=\small\ttfamily}
+\begin{lstlisting}
+__global__ void median(uint8_t *output) {
+    int ic, ir, ni = 0;
+    float neigh[9], ma, mi;
+    for (ic = (x - 1); ic <= (x + 1); ic++) {
+      for (ir = (y - 1); ir <= (y + 1); ir++) {
+        neigh[ni++] = tex2D(depthT, ic, ir);
+      }
+    }
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        ma = fmaxf(neigh[j], neigh[j+1]);
+        mi = fminf(neigh[j], neigh[j+1]);
+        neigh[j] = mi;
+        neigh[j+1] = ma;
+      }
+    }
+    int c = (float)(2048 * 256) / (neigh[9/2] - 2048.0);
+}
+\end{lstlisting}
+\end{frame}
+
+% Man kann den obigen Algorithmus noch anders aufschreiben (unrolled), dann
+% wird er nochmal ca. 100 usec schneller, aber Lesbarkeit leidet.
+
+\begin{frame}[fragile]{Fazit}
+\includegraphics[width=\textwidth]{medianhost.pdf}\\
+\begin{center}
+Speedup durch CUDA: $\approx 12x$
+\end{center}
+\end{frame}
+\section{Hardware-Rendering}
 
 \begin{frame}
 \frametitle{Portierung auf GPU}
