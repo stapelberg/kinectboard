@@ -8,8 +8,7 @@
 
 #include "kinectboard_images.h"
 
-// two kinect images (full resolution) next to each other
-#define SCREEN_WIDTH (640 * 2)
+extern int SCREEN_WIDTH;
 // kinect image height (480) + space for controls
 #define SCREEN_HEIGHT 480 + 300
 #define SCREEN_DEPTH 32

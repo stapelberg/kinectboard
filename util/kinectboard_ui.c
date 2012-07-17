@@ -26,8 +26,7 @@ static pthread_mutex_t rendermutex = PTHREAD_MUTEX_INITIALIZER;
 #include <unistd.h>
 #include <limits.h>
 
-// two kinect images (full resolution) next to each other
-#define SCREEN_WIDTH (640 * 2)
+extern int SCREEN_WIDTH;
 // kinect image height (480) + space for controls
 #define SCREEN_HEIGHT 300
 #define SCREEN_OFFSET 480

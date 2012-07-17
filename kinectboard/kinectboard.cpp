@@ -47,11 +47,11 @@
 #include <cuda_gl_interop.h>
 #include <drvapi_error_string.h>
 
-// two kinect images (full resolution) next to each other
-#define SCREEN_WIDTH (640 * 2)
 // kinect image height (480) + space for controls
 #define SCREEN_HEIGHT 480 + 300
 #define SCREEN_DEPTH 32
+
+int SCREEN_WIDTH = 1280;
 
 GLuint rawDepthBufferID;
 GLuint rawRgbBufferID;
@@ -202,20 +202,32 @@ int main(int argc, char *argv[]) {
     SDL_Surface *screen;
     static struct option long_options[] = {
         {"no-kinect", no_argument, 0, 'k'},
+        {"fullscreen", optional_argument, 0, 'f'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
     int option_index = 0, opt;
     bool init_kinect = true;
+    bool fullscreen_mode = false;
+    char *fullscreen_resolution = NULL;
 
-    while ((opt = getopt_long(argc, argv, "kh", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "khf:", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'k':
                 init_kinect = false;
                 printf("Not initializing kinect (-k passed)\n");
                 break;
+            case 'f':
+                printf("Starting in fullscreen mode\n");
+                fullscreen_mode = true;
+                if (optarg)
+                    fullscreen_resolution = strdup(optarg);
+                break;
             case 'h':
                 printf("Syntax: %s [-k] [-h]\n", argv[0]);
+                printf("\t--no-kinect\tDisables initializing kinect\n");
+                printf("\t--fullscreen\tEnable fullscreen mode (default is windowed)\n");
+                printf("\t\t\t(--fullscreen=1024x768 to overwrite the resolution)\n");
                 exit(0);
                 break;
         }
@@ -240,7 +252,17 @@ int main(int argc, char *argv[]) {
     SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 1);
 
     /* Initialize the screen / window */
-    screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_DEPTH, SDL_OPENGL | SDL_HWSURFACE | SDL_NOFRAME | SDL_DOUBLEBUF);
+    if (fullscreen_mode && fullscreen_resolution != NULL) {
+        if (sscanf(fullscreen_resolution, "%dx", &SCREEN_WIDTH) != 1) {
+            fprintf(stderr, "Invalid resolution specified: %s (needs to be WxH, e.g. 1024x768)\n", fullscreen_resolution);
+            exit(1);
+        }
+        printf("Setting width to %d\n", SCREEN_WIDTH);
+    }
+    int flags = SDL_OPENGL | SDL_HWSURFACE | SDL_NOFRAME | SDL_DOUBLEBUF;
+    if (fullscreen_mode)
+        flags |= SDL_FULLSCREEN;
+    screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_DEPTH, flags);
     if (screen == 0) {
         printf("set failed: %s\n", SDL_GetError());
         return 1;
