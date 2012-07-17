@@ -153,3 +153,23 @@ void kb_images_scroll_right(void) {
     animation_direction = A_FROM_RIGHT_TO_LEFT;
     animation_step = 640;
 }
+
+void kb_images_current_buffers(GLuint *left, GLuint *right) {
+    kb_image *img;
+    int cnt = 0, i = 0;
+    CIRCLEQ_FOREACH(img, &image_head, image) {
+        if (animation_step > 0) {
+            if (i++ < startidx-1)
+                continue;
+        } else {
+            if (i++ < startidx)
+                continue;
+        }
+        if (cnt++ == 0)
+            *left = img->bufferID;
+        else {
+            *right = img->bufferID;
+            break;
+        }
+    }
+}

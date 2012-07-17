@@ -232,6 +232,28 @@ void rgb_cb(freenect_device *dev, void *rgb, uint32_t timestamp)
 
 bool calibration = false;
 
+static void select_reference_color(int x, int y) {
+    printf("Handling click on x = %d, y = %d\n", x, y);
+    GLuint left_buffer, right_buffer, buffer;
+    kb_images_current_buffers(&left_buffer, &right_buffer);
+    printf("left texture id = %d, right = %d\n", left_buffer, right_buffer);
+    uchar4 *gpu_buffer = NULL;
+    if (x < 640) {
+        /* The clicked pixel is in the left image */
+        buffer = left_buffer;
+    } else {
+        /* The clicked pixel is in the right image */
+        buffer = right_buffer;
+        x -= 640;
+    }
+    cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_buffer, buffer));
+    uchar4 pixel;
+    cudaMemcpy(&pixel, gpu_buffer + (y * 640) + x, sizeof(uchar4), cudaMemcpyDeviceToHost);
+    printf("pixel-value: %d, %d, %d (%d)\n", pixel.x, pixel.y, pixel.z, pixel.w);
+    printf("err: %s\n", gluErrorString(glGetError()));
+    cutilSafeCall(cudaGLUnmapBufferObject(buffer));
+}
+
 static void kb_poll_events(void) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -243,7 +265,11 @@ static void kb_poll_events(void) {
                 kb_ui_inject_mouse_button(event.button.button, false);
                 break;
             case SDL_MOUSEBUTTONDOWN:
-                kb_ui_inject_mouse_button(event.button.button, true);
+                if (event.button.y < 480) {
+                    select_reference_color(event.button.x, event.button.y);
+                } else {
+                    kb_ui_inject_mouse_button(event.button.button, true);
+                }
                 break;
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {
@@ -265,6 +291,7 @@ static void kb_poll_events(void) {
                         printf("Unknown key pressed.\n");
                         break;
                 }
+                break;
         }
     }
 }

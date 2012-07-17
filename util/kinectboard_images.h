@@ -49,6 +49,9 @@ void kb_images_render();
 
 void kb_images_scroll_left(void);
 void kb_images_scroll_right(void);
+
+void kb_images_current_buffers(GLuint *left, GLuint *right);
+
 #ifdef __cplusplus
 }
 #endif
