@@ -17,7 +17,7 @@
 #define BLOCK_Y 15
 
 static uint8_t *gpu_rgb_image;
-static uint16_t *gpu_depth_image;
+static uchar4 *gpu_cont_mask;
 static uchar4 blank_image[640*480];
 
 __global__ void mask_rgb_gpu(uint8_t *gpu_rgb_image, uchar4 *gpu_raw_rgb_output, float4 reference_color) {
@@ -55,7 +55,7 @@ __global__ void mask_rgb_gpu(uint8_t *gpu_rgb_image, uchar4 *gpu_raw_rgb_output,
  * from the glow filter as a mask to the RGB image. In gpu_output we will have
  * the RGB values for all areas which are relevant.
  */
-__global__ void translate_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, uchar4 *gpu_output) {
+__global__ void translate_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, uchar4 *gpu_output, uchar4 *gpu_cont_mask) {
     const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     const int i = (y * 640) + x;
@@ -108,15 +108,42 @@ __global__ void translate_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, ucha
     gpu_output[i].x = gpu_rgb_image[3 * di + 0];
     gpu_output[i].y = gpu_rgb_image[3 * di + 1];
     gpu_output[i].z = gpu_rgb_image[3 * di + 2];
+
+    if (gpu_rgb_image[3 * di + 0] > 0) {
+        gpu_cont_mask[i].w = 0;
+        gpu_cont_mask[i].x = gpu_rgb_image[3 * di + 0];
+        gpu_cont_mask[i].y = gpu_rgb_image[3 * di + 1];
+        gpu_cont_mask[i].z = gpu_rgb_image[3 * di + 2];
+    }
+}
+
+__global__ void mask_cont_gpu(uint8_t *gpu_rgb_image, uchar4 *gpu_cont_rgb_output, uchar4 *gpu_cont_mask) {
+    const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+    const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+    const int i = (y * 640) + x;
+
+    gpu_cont_rgb_output[i].w = 0;
+    if (gpu_cont_mask[i].x > 0) {
+        // Pixel aus der Maske nehmen
+        gpu_cont_rgb_output[i].x = gpu_cont_mask[i].x;
+        gpu_cont_rgb_output[i].y = gpu_cont_mask[i].y;
+        gpu_cont_rgb_output[i].z = gpu_cont_mask[i].z;
+    } else {
+        // Pixel aus dem RGB-Bild nehmen
+        gpu_cont_rgb_output[i].x = gpu_rgb_image[3 * i + 0];
+        gpu_cont_rgb_output[i].y = gpu_rgb_image[3 * i + 1];
+        gpu_cont_rgb_output[i].z = gpu_rgb_image[3 * i + 2];
+    }
 }
 
 void mask_rgb_init(void) {
     cudaMalloc(&gpu_rgb_image, 640 * 480 * 3 * sizeof(uint8_t));
-    cudaMalloc(&gpu_depth_image, 640 * 480 * sizeof(uint16_t));
+    cudaMalloc(&gpu_cont_mask, 640 * 480 * sizeof(uchar4));
     memset(blank_image, '\0', 640 * 480 * sizeof(uchar4));
+    cudaMemcpy(gpu_cont_mask, blank_image, 640 * 480 * sizeof(uchar4), cudaMemcpyHostToDevice);
 }
 
-void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output, float4 reference_color) {
+void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output, uchar4 *gpu_cont_rgb_output, float4 reference_color) {
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
 
@@ -126,13 +153,20 @@ void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, u
 
     cudaMemcpy(gpu_output, blank_image, 640*480 * sizeof(uchar4), cudaMemcpyHostToDevice);
 
+    // XXX: This lags one frame behind. Also, we use 'i' instead of 'di' so we use slightly wrong coordinates.
+    mask_cont_gpu<<<gridsize, blocksize>>>(gpu_rgb_image, gpu_cont_rgb_output, gpu_cont_mask);
+    err = cudaGetLastError();
+    if (err != cudaSuccess)
+        printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));
+
+    cudaThreadSynchronize();
     mask_rgb_gpu<<<gridsize, blocksize>>>(gpu_rgb_image, gpu_raw_rgb_output, reference_color);
     err = cudaGetLastError();
     if (err != cudaSuccess)
         printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));
 
     cudaThreadSynchronize();
-    translate_rgb_gpu<<<gridsize, blocksize>>>(gpu_glow_output, gpu_rgb_image, gpu_output);
+    translate_rgb_gpu<<<gridsize, blocksize>>>(gpu_glow_output, gpu_rgb_image, gpu_output, gpu_cont_mask);
     err = cudaGetLastError();
     if (err != cudaSuccess)
         printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));

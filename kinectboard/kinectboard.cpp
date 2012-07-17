@@ -59,12 +59,15 @@ GLuint medianBufferID;
 GLuint maskedMedianBufferID;
 GLuint glowBufferID;
 GLuint maskRgbBufferID;
+GLuint contRgbBufferID;
+
 GLuint rawDepthTextureID;
 GLuint rawRgbTextureID;
 GLuint medianTextureID;
 GLuint maskedMedianTextureID;
 GLuint glowTextureID;
 GLuint maskRgbTextureID;
+GLuint contRgbTextureID;
 
 uint16_t *depth_buffer;
 
@@ -326,6 +329,7 @@ int main(int argc, char *argv[]) {
     allocateGLTexture(&glowBufferID, &glowTextureID);
     allocateGLTexture(&rawRgbBufferID, &rawRgbTextureID);
     allocateGLTexture(&maskRgbBufferID, &maskRgbTextureID);
+    allocateGLTexture(&contRgbBufferID, &contRgbTextureID);
 
     kb_image_create("Raw depth image", rawDepthBufferID, rawDepthTextureID);
     kb_image_create("Median-filtered depth image", medianBufferID, medianTextureID);
@@ -333,6 +337,7 @@ int main(int argc, char *argv[]) {
     kb_image_create("Glowing depth", glowBufferID, glowTextureID);
     kb_image_create("Raw RGB image", rawRgbBufferID, rawRgbTextureID);
     kb_image_create("Masked kinect RGB image", maskRgbBufferID, maskRgbTextureID);
+    kb_image_create("Cont RGB image", contRgbBufferID, contRgbTextureID);
 
     printf("gl set up.\n");
  
@@ -341,7 +346,8 @@ int main(int argc, char *argv[]) {
            *gpu_glow_output,
            *gpu_mask_rgb_output,
            *gpu_raw_depth_output,
-           *gpu_raw_rgb_output;
+           *gpu_raw_rgb_output,
+           *gpu_cont_rgb_output;
 
     int fps = 0;
     int last_time = 0;
@@ -382,6 +388,7 @@ int main(int argc, char *argv[]) {
         gpu_mask_rgb_output = NULL;
         gpu_raw_depth_output = NULL;
         gpu_raw_rgb_output = NULL;
+        gpu_cont_rgb_output = NULL;
 
         cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_raw_depth_output, rawDepthBufferID));
         cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_median_output, medianBufferID));
@@ -389,6 +396,7 @@ int main(int argc, char *argv[]) {
         cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_glow_output, glowBufferID));
         cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_mask_rgb_output, maskRgbBufferID));
         cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_raw_rgb_output, rawRgbBufferID));
+        cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_cont_rgb_output, contRgbBufferID));
 
         // XXX: Potential for optimization: We currently call functions like
         // median_filter(), median_mask() and mask_rgb() which are all
@@ -402,7 +410,7 @@ int main(int argc, char *argv[]) {
         median_mask(calibration, gpu_median_output, gpu_masked_median_output);
         glow_filter(gpu_masked_median_output, gpu_glow_output, glow_start, glow_end);
 
-        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output, reference_color);
+        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output, gpu_cont_rgb_output, reference_color);
         done_rgb_image();
 
         cutilSafeCall(cudaGLUnmapBufferObject(maskedMedianBufferID));
@@ -411,6 +419,7 @@ int main(int argc, char *argv[]) {
         cutilSafeCall(cudaGLUnmapBufferObject(maskRgbBufferID));
         cutilSafeCall(cudaGLUnmapBufferObject(rawDepthBufferID));
         cutilSafeCall(cudaGLUnmapBufferObject(rawRgbBufferID));
+        cutilSafeCall(cudaGLUnmapBufferObject(contRgbBufferID));
 
         kb_images_render();
 
