@@ -142,15 +142,15 @@
 \section{Allgemeines}
 \subsection{Unser Projekt}
 \begin{frame}
-\frametitle{Projektidee: Objekttracing}
+\frametitle{Projektidee: Objekttracking}
 
 Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 
 \begin{itemize}
 	\item Schwierigkeiten
 	\begin{itemize}
-		\item Qualität des Tiefenbildes zu schlecht
 		\item Pure Farberkennung zu viele false-positives
+		\item Qualität des Tiefenbildes zu schlecht
 	\end{itemize}
 	\item Lösungsansatz
 		\begin{itemize}
@@ -159,13 +159,13 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 \end{itemize}
 \end{frame}
 
-\subsection{Architektur}
-
-\begin{frame}
-\frametitle{Architektur}
-\hspace*{0.9cm}\includegraphics[width=10.5cm]{architektur.png}
-
-\end{frame}
+%\subsection{Architektur}
+%
+%\begin{frame}
+%\frametitle{Architektur}
+%\hspace*{0.9cm}\includegraphics[width=10.5cm]{architektur.png}
+%
+%\end{frame}
 
 \subsection{Vorgehen}
 
@@ -200,6 +200,7 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 		\item 640x480 \@ 30Hz Farbbild (RGB)
 		\item 640x480 \@ 30Hz Tiefenbild
 	\end{itemize}
+    \item Versetzte Kameras
 	\item Genauigkeit
 	\begin{itemize}
 		\item Genauigkeit ab 50cm ca. 1,5mm
@@ -291,30 +292,30 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 \includegraphics[width=12.4cm]{filter4.png}
 \end{frame}
 
-\subsection{Speed-Up}
-\begin{frame}
-\frametitle{Speed-Up}
-
-{\Large $S(p)=\frac{\text{Ausführungszeit\, SingleCore}}{\text{Ausführungszeit\, MultiCore}}$}
-\vspace*{0.4cm}
-	\begin{table}
-		\begin{tabular}{|l|l|l|}
-		\hline
-		\textbf{Recheneinheit} & \textbf{Median Filter} & \textbf{RGB-Bild maskieren}\\
-		\hline
-		CPU & 30 Millisekunden & ? Millisekunden \\ \hline
-		GPU & 1,5 Milisekunden & ? Mikrosekunden \\ \hline
-		\end{tabular}
-	\end{table}
-\vspace*{0.4cm}
-{\large
-\begin{itemize}
-	\item[] Speed-Up Median Filter: 5\%
-	\item[] Speed-Up RGB-Bild-Maskierung: over9000\%
-\end{itemize}
-}
-
-\end{frame}
+%\subsection{Speed-Up}
+%\begin{frame}
+%\frametitle{Speed-Up}
+%
+%{\Large $S(p)=\frac{\text{Ausführungszeit\, SingleCore}}{\text{Ausführungszeit\, MultiCore}}$}
+%\vspace*{0.4cm}
+%	\begin{table}
+%		\begin{tabular}{|l|l|l|}
+%		\hline
+%		\textbf{Recheneinheit} & \textbf{Median Filter} & \textbf{RGB-Bild maskieren}\\
+%		\hline
+%		CPU & 30 Millisekunden & ? Millisekunden \\ \hline
+%		GPU & 1,5 Milisekunden & ? Mikrosekunden \\ \hline
+%		\end{tabular}
+%	\end{table}
+%\vspace*{0.4cm}
+%{\large
+%\begin{itemize}
+%	\item[] Speed-Up Median Filter: 5\%
+%	\item[] Speed-Up RGB-Bild-Maskierung: over9000\%
+%\end{itemize}
+%}
+%
+%\end{frame}
 
 \begin{frame}{Median-Filter: Überblick}
     \newcounter{overviewstep}
@@ -605,6 +606,11 @@ Speedup durch CUDA: $\approx 12x$
 \item Awesomium
 \end{itemize}
 \hspace*{1,2cm}\includegraphics[width=10cm]{gui.png}
+\end{frame}
+
+\begin{frame}{Live Demo}
+\Huge
+\centerline{Live Demo}
 \end{frame}
 
 \section{Ausblick}
