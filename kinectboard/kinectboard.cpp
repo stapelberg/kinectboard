@@ -77,6 +77,9 @@ extern int ANIMATION_ONE_STEP;
 // Jeder Farbanteil wird durch √(r² + g² + b²) geteilt.
 float4 reference_color = { -1, -1, -1, -1 };
 
+uint16_t glow_start = 0;
+uint16_t glow_end = 1024;
+
 double FILTER_DISTANCE = 0.2f;
 
 double DEPTH_MASK_MULTIPLIER = 0.0f;
@@ -149,9 +152,11 @@ static void set_depth_difference_threshold_callback(float val) {
 }
 static void set_glow_area_start_callback(float val) {
     printf("%f", val);
+    glow_start = val;
 }
 static void set_glow_area_end_callback(float val) {
     printf("%f", val);
+    glow_end = val;
 }
 
 static void kb_poll_events(void) {
@@ -395,7 +400,7 @@ int main(int argc, char *argv[]) {
         done_depth_image();
 
         median_mask(calibration, gpu_median_output, gpu_masked_median_output);
-        glow_filter(gpu_masked_median_output, gpu_glow_output);
+        glow_filter(gpu_masked_median_output, gpu_glow_output, glow_start, glow_end);
 
         mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output, reference_color);
         done_rgb_image();

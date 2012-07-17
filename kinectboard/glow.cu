@@ -25,19 +25,21 @@ static cudaChannelFormatDesc channelDesc;
  * detected as different in the previous step (the median masking).
  *
  */
-__global__ void glow_gpu(uchar4 *gpu_median_masked, uchar4 *gpu_output) {
+__global__ void glow_gpu(uchar4 *gpu_median_masked, uchar4 *gpu_output, uint16_t glow_start, uint16_t glow_end) {
     const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     const int i = (y * 640) + x;
 
     for (int grow = (y-10); grow < (y+10); grow++) {
         for (int gcol = (x-10); gcol < (x+10); gcol++) {
-            /* TODO: check whether it’s within glow_start and glow_end */
-            if (tex2D(gpu_median_masked_tex, gcol, grow).x != 0) {
+            uint8_t median_masked = tex2D(gpu_median_masked_tex, gcol, grow).x;
+            if (median_masked != 0 &&
+                median_masked >= glow_start &&
+                median_masked <= glow_end) {
                 gpu_output[i].w = 0;
                 gpu_output[i].x = 0;
                 gpu_output[i].y = 0;
-                gpu_output[i].z = tex2D(gpu_median_masked_tex, gcol, grow).x;
+                gpu_output[i].z = median_masked;
                 return;
             }
         }
@@ -53,7 +55,7 @@ void glow_filter_init(void) {
     channelDesc = cudaCreateChannelDesc<uchar4>();
 }
 
-void glow_filter(uchar4 *gpu_median_masked, uchar4 *gpu_output) {
+void glow_filter(uchar4 *gpu_median_masked, uchar4 *gpu_output, uint16_t glow_start, uint16_t glow_end) {
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
 
@@ -62,7 +64,7 @@ void glow_filter(uchar4 *gpu_median_masked, uchar4 *gpu_output) {
     // doing it.
     cutilSafeCall(cudaBindTexture2D(NULL, &gpu_median_masked_tex, gpu_median_masked, &channelDesc, 640, 480, 640 * sizeof(uchar4)));
 
-    glow_gpu<<<gridsize, blocksize>>>(gpu_median_masked, gpu_output);
+    glow_gpu<<<gridsize, blocksize>>>(gpu_median_masked, gpu_output, glow_start, glow_end);
     if (cudaGetLastError() != cudaSuccess)
         printf("Could not call kernel. Wrong gridsize/blocksize?\n");
 
