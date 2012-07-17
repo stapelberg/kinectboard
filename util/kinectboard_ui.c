@@ -1,4 +1,10 @@
-// vim:ts=4:sw=4:expandtab
+/*
+ * vim:ts=4:sw=4:expandtab
+ *
+ * kinectboard © 2012 Michael Stapelberg, Felix Bruckner, Pascal Krause
+ * See LICENSE for licensing details.
+ *
+ */
 
 #include "kinectboard_ui.h"
 #include <malloc.h>
