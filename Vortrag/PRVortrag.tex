@@ -321,8 +321,66 @@
 
 \end{frame}
 
-\section{Hardware-Rendering}
+\section{Portierung auf GPU}
 
+\begin{frame}
+\frametitle{Portierung auf GPU}
+\begin{itemize}
+\item Ausgangssituation (CPU)
+	\begin{itemize}
+		\item SDL Surface
+		\item Softwarerendering
+		\item 3 FPS bei einschalten der Filter
+	\end{itemize}
+\item Ziel (GPU)
+	\begin{itemize}
+		\item Bilder von Host auf Grafikkarte kopieren
+		\item Bilder auf Grafikkarte berechnen
+		\item Bilder von Grafikkarte auf Host kopieren
+		\item extrem langsam 
+	\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Optimierung 1}
+\begin{itemize}
+\item Alle Bilder in einen Block
+\item Weniger Memcopys
+\item Immernoch zu langsam (5fps)
+\item Kosten für ein Memcopy 7ms
+\item Maximale Durchlaufdauer 30ms
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Optimierung 2}
+\begin{itemize}
+\item Hardwarerendering mit OpenGL
+\item Spezielle OpenGL-Bufferobjekte
+\item Nur noch kopieren der Input-Bilder erforderlich
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Optimierung 3}
+\begin{itemize}
+\item Doublebuffering verhindert flackern
+\item BufferObjekt besteht aus front \& back
+\item Bufferwechsel bei Pixelveränderung
+\item VSync
+\end{itemize}
+\hspace*{4cm}\includegraphics[width=3cm]{double.png}
+\end{frame}
+
+\begin{frame}
+\frametitle{GPU GUI}
+\begin{itemize}
+\item Alte SDL-GUI keine OpenGL unterstützung
+\item Awesomium
+\end{itemize}
+\hspace*{1,2cm}\includegraphics[width=10cm]{gui.png}
+\end{frame}
 
 \section{Ausblick}
 
