@@ -97,6 +97,9 @@ static void select_reference_color(int x, int y) {
     float offset = SCREEN_WIDTH/1280.f;
 
     printf("Handling click on x = %d, y = %d\n", x, y);
+    x *= (1280.0f / SCREEN_WIDTH);
+    y *= (1280.0f / SCREEN_WIDTH);
+    printf("(After scaling) Handling click on x = %d, y = %d\n", x, y);
     GLuint left_buffer, right_buffer, buffer;
     kb_images_current_buffers(&left_buffer, &right_buffer);
     printf("left texture id = %d, right = %d\n", left_buffer, right_buffer);
@@ -111,8 +114,7 @@ static void select_reference_color(int x, int y) {
     }
     cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_buffer, buffer));
     uchar4 pixel;
-    int offset_pixel = 640*offset;
-    cudaMemcpy(&pixel, gpu_buffer + (y * offset_pixel) + x, sizeof(uchar4), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&pixel, gpu_buffer + (y * 640) + x, sizeof(uchar4), cudaMemcpyDeviceToHost);
     printf("pixel-value: %d, %d, %d (%d)\n", pixel.x, pixel.y, pixel.z, pixel.w);
     static char rgbbuffer[4096];
     snprintf(rgbbuffer, sizeof(rgbbuffer), "%d,%d,%d", pixel.z, pixel.y, pixel.x);
