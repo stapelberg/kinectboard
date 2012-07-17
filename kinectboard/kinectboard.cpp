@@ -15,6 +15,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <getopt.h>
 
 #include <pthread.h>
 
@@ -198,10 +200,31 @@ static void allocateGLTexture(GLuint *bufferID, GLuint *textureID) {
 
 int main(int argc, char *argv[]) {
     SDL_Surface *screen;
+    static struct option long_options[] = {
+        {"no-kinect", no_argument, 0, 'k'},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+    int option_index = 0, opt;
+    bool init_kinect = true;
+
+    while ((opt = getopt_long(argc, argv, "kh", long_options, &option_index)) != -1) {
+        switch (opt) {
+            case 'k':
+                init_kinect = false;
+                printf("Not initializing kinect (-k passed)\n");
+                break;
+            case 'h':
+                printf("Syntax: %s [-k] [-h]\n", argv[0]);
+                exit(0);
+                break;
+        }
+    }
 
     median_filter_init();
     glow_filter_init();
-    kinect_init();
+    if (init_kinect)
+        kinect_init();
     mask_rgb_init();
     
     /* Initialize SDL */
