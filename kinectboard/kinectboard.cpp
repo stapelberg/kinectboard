@@ -140,6 +140,20 @@ static void exit_callback() {
 static void set_distance_threshold_callback(float val) {
     printf("%f", val);
 }
+
+static void set_depth_multiplier_callback(float val) {
+    printf("%f", val);
+}
+static void set_depth_difference_threshold_callback(float val) {
+    printf("%f", val);
+}
+static void set_glow_area_start_callback(float val) {
+    printf("%f", val);
+}
+static void set_glow_area_end_callback(float val) {
+    printf("%f", val);
+}
+
 static void kb_poll_events(void) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -292,6 +306,10 @@ int main(int argc, char *argv[]) {
     kb_ui_register_void_callback("ImageRight",kb_images_scroll_right);
     kb_ui_register_void_callback("ImageLeft",kb_images_scroll_left);
     kb_ui_register_value_callback("SetDistanceThreshold", set_distance_threshold_callback);
+    kb_ui_register_value_callback("SetDepthMultiplier", set_depth_multiplier_callback);
+    kb_ui_register_value_callback("SetDepthDifferenceThreshold", set_depth_difference_threshold_callback);
+    kb_ui_register_value_callback("SetGlowAreaStart", set_glow_area_start_callback);
+    kb_ui_register_value_callback("SetGlowAreaEnd", set_glow_area_end_callback);
 
     // The CUDA Device Info requires a valid UI since the info is displayed there
     print_cuda_device_info();

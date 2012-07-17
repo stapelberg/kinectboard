@@ -4,12 +4,15 @@
 <link href='ui.css' rel='stylesheet' type='text/css'>
 
 <script type="text/javascript">
+
 function Retrieve(data) {
 	document.getElementById('data').innerHTML = data;
 }
+
 function SetFPS(data) {
 	document.getElementById('fps').innerHTML = data;
 }
+
 function SetRGB(data) {
 	var div = document.getElementById( 'rgb' );
 	var rgb = data.split(',');
@@ -21,6 +24,34 @@ function RunDTCallback(sliderID, textbox) {
     var y = document.getElementById(sliderID);
     x.value = y.value;
     Kinectboard.SetDistanceThreshold(y.value);
+}
+
+function RunDMCallback(sliderID, textbox) {
+    var x = document.getElementById(textbox);
+    var y = document.getElementById(sliderID);
+    x.value = y.value;
+    Kinectboard.SetDepthMultiplier(y.value);
+}
+
+function RunDDTCallback(sliderID, textbox) {
+    var x = document.getElementById(textbox);
+    var y = document.getElementById(sliderID);
+    x.value = y.value;
+    Kinectboard.SetDepthDifferenceThreshold(y.value);
+}
+
+function RunGECallback(sliderID, textbox) {
+    var x = document.getElementById(textbox);
+    var y = document.getElementById(sliderID);
+    x.value = y.value;
+    Kinectboard.SetGlowAreaEnd(y.value);
+}
+
+function RunGSCallback(sliderID, textbox) {
+    var x = document.getElementById(textbox);
+    var y = document.getElementById(sliderID);
+    x.value = y.value;
+    Kinectboard.SetGlowAreaStart(y.value);
 }
 
 function SetCUDAInfo(info) {
@@ -73,16 +104,38 @@ function setLeftImageLabel(text) {
 	<table border=0 width=1024>
 		<tr><td width=512>
 		<table border=0>
-			<tr><td colspan=3><b>Parameters</b></td></tr>
-			<tr>
+		<tr><td colspan=3><b>Parameters</b></td></tr>
+		<tr><td colspan=3>Median Filter Size: 3x3</td></tr>
+		<tr>
 			<td>Distance Threshold</td>
 			<td valign=middle><input id="sliderDT" type="range" min="0" max="1" step="0.1" value ="0.2" onchange="RunDTCallback('sliderDT','rangeValueDT')"></td>
 			<td><input id="rangeValueDT" type="text" size="2" value="0.2"/></td>
+		</tr>		
+		<tr>
+			<td>Depth Multiplier</td>
+			<td valign=middle><input id="sliderDM" type="range" min="1" max="5" step="1" value ="1" onchange="RunDMCallback('sliderDM','rangeValueDM')"></td>
+			<td><input id="rangeValueDM" type="text" size="2" value="1"/></td>
+		</tr>
+		<tr>
+			<td>Depth Difference Threshold</td>
+			<td valign=middle><input id="sliderDT" type="range" min="1" max="25" step="1" value ="1" onchange="RunDDTCallback('sliderDDT','rangeValueDDT')"></td>
+			<td><input id="rangeValueDDT" type="text" size="2" value="1"/> px</td>
+		</tr>
+		<tr>
+			<td>Glow Area Start</td>
+			<td valign=middle><input id="sliderGS" type="range" min="0" max="255" step="1" value ="133" onchange="RunGSCallback('sliderGS','rangeValueGS')"></td>
+			<td><input id="rangeValueGS" type="text" size="2" value="133"/></td>
+		</tr>
+		<tr>
+			<td>Glow Area End</td>
+			<td valign=middle><input id="sliderGE" type="range" min="0" max="255" step="1" value ="197" onchange="RunGECallback('sliderGE','rangeValueGE')"></td>
+			<td><input id="rangeValueGE" type="text" size="2" value="197"/></td>
 		</tr>
 		</table>
 	</td>
 	<td width=512>
 		<table width=512>
+		<tr><td colspan=2><b>Cuda Device Info</b></td></tr>
 			<tr><td width=250 id="CudaDeviceKey"></td><td id="CudaDeviceValue"></td></tr>
 			<tr><td width=250 id="CudaCapabilityKey"></td><td id="CudaCapabilityValue"></td></tr>
 			<tr><td width=250 id="CudaMemKey"></td><td id="CudaMemValue"></td></tr>

@@ -4,6 +4,7 @@ body {
 	background-repeat:repeat;
 	color:white;
 	font-size:9pt;
+	overflow:hidden
 }
 
 table {

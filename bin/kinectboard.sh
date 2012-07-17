@@ -1,2 +1,2 @@
 #!/bin/bash
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ./kinectboard
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:. ./kinectboard "$@"
