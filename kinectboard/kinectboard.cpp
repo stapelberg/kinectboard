@@ -60,6 +60,7 @@ GLuint maskedMedianBufferID;
 GLuint glowBufferID;
 GLuint maskRgbBufferID;
 GLuint contRgbBufferID;
+GLuint calibrationBufferID;
 
 GLuint rawDepthTextureID;
 GLuint rawRgbTextureID;
@@ -68,6 +69,7 @@ GLuint maskedMedianTextureID;
 GLuint glowTextureID;
 GLuint maskRgbTextureID;
 GLuint contRgbTextureID;
+GLuint calibrationTextureID;
 
 uint16_t *depth_buffer;
 
@@ -230,6 +232,25 @@ static void allocateGLTexture(GLuint *bufferID, GLuint *textureID) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
+static void loadTextureFromFile(const char* file, GLuint *bufferID, GLuint *textureID) {
+    SDL_Surface* surface = SDL_LoadBMP(file);
+
+    if(!surface)
+        return;
+
+    glGenBuffers(1, bufferID);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *bufferID);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, surface->w * surface->h * surface->format->BytesPerPixel 
+        * sizeof(GLubyte), surface->pixels, GL_STATIC_DRAW);
+    glEnable(GL_TEXTURE_2D);
+    glGenTextures(1, textureID);
+    glBindTexture(GL_TEXTURE_2D, *textureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, surface->w, surface->h, 0, GL_BGR, GL_UNSIGNED_BYTE, NULL);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+}
+
 int main(int argc, char *argv[]) {
     SDL_Surface *screen;
     static struct option long_options[] = {
@@ -348,6 +369,12 @@ int main(int argc, char *argv[]) {
     kb_image_create("Raw RGB image", rawRgbBufferID, rawRgbTextureID);
     kb_image_create("Masked kinect RGB image", maskRgbBufferID, maskRgbTextureID);
     kb_image_create("Cont RGB image", contRgbBufferID, contRgbTextureID);
+
+    // Load a Texture
+    loadTextureFromFile("../data/calibration.bmp", &calibrationBufferID, &calibrationTextureID);
+    kb_image_create("Calibration", calibrationBufferID, calibrationTextureID);
+
+
 
     printf("gl set up.\n");
  
