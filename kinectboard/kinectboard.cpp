@@ -140,9 +140,18 @@ static void select_reference_color(int x, int y) {
 
 // Calibration button callback
 static void run_calibration_callback(void) {
-    calibration = !calibration;
-    if (calibration)
+    if (calibration) 
         median_clear_calibration();
+
+
+} 
+static void start_calibration_callback(void) {
+    calibration = true;
+    kb_ui_call_javascript("MarkAsClicked","tl");
+} 
+
+static void end_calibration_callback(void) {
+    calibration = false;
 } 
 
 // Exit Callback
@@ -345,6 +354,8 @@ int main(int argc, char *argv[]) {
     // Register callbacks
     kb_ui_register_void_callback("Exit",exit_callback);
     kb_ui_register_void_callback("Calibrate",run_calibration_callback);
+    kb_ui_register_void_callback("StartCalibration",start_calibration_callback);
+    kb_ui_register_void_callback("EndCalibration",end_calibration_callback);
     kb_ui_register_void_callback("ImageRight",kb_images_scroll_right);
     kb_ui_register_void_callback("ImageLeft",kb_images_scroll_left);
     kb_ui_register_value_callback("SetDistanceThreshold", set_distance_threshold_callback);

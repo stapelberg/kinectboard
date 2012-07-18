@@ -288,7 +288,7 @@ void kb_ui_render() {
 
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, bufferID);
     glBindTexture(GL_TEXTURE_2D, textureID_front);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
 
     glBegin(GL_QUADS);
         glTexCoord2f(0,0);

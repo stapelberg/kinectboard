@@ -86,6 +86,38 @@ function setLeftImageLabel(text) {
 	document.getElementById('ImageLabelLeft').innerHTML = text;
 }
 
+function ToggleCalibration() {
+	var btn = document.getElementById("calibBtn");
+	if(btn.value == "Start Calibration") {
+		btn.setAttribute('value','End Calibration');
+		Kinectboard.StartCalibration();
+		document.getElementById("CudaInfo").style.display = "none";
+		document.getElementById("Calibration").style.display = "block";
+	} else {
+		btn.setAttribute('value','Start Calibration');
+		Kinectboard.EndCalibration();
+		document.getElementById("CudaInfo").style.display = "block";
+		document.getElementById("Calibration").style.display = "none";
+	}
+
+	ResetList();
+}
+
+function ResetList() {
+	document.getElementById("tl").style.color ="red";
+	document.getElementById("tr").style.color ="red";
+	document.getElementById("bl").style.color ="red";
+	document.getElementById("br").style.color ="red";
+	document.getElementById("header").style.color ="red";
+} 
+
+function MarkAsClicked(element) {
+	document.getElementById(element).style.color ="green";
+
+	if(element == "br") {
+		document.getElementById("header").style.color ="green";
+	}
+}
 </script>
 </head>
 <body>
@@ -95,7 +127,7 @@ function setLeftImageLabel(text) {
 			<tr>
 				<td width=80><input type=submit value="<<" onclick="Kinectboard.ImageLeft();" class=btn /></td>
 				<td width=350><div id="ImageLabelLeft" style="font-weight:bold; text-align:center;">Raw Depth Image</div></td>
-				<td> <input type=submit value="Calibrate" onclick="Kinectboard.Calibrate();" class=btn /></td>
+				<td> <input id="calibBtn" type=submit value="Start Calibration" onclick="ToggleCalibration();" class=btn /></td>
 				<td width=350><div id="ImageLabelRight" style="font-weight:bold; text-align:center;">Median-filtered depth image</div></td>
 				<td width=80 align=right><input type=submit value=">>" onclick="Kinectboard.ImageRight();" class=btn /></td>
 			</tr>
@@ -135,6 +167,7 @@ function setLeftImageLabel(text) {
 		</table>
 	</td>
 	<td width=512>
+		<div id="CudaInfo">
 		<table width=512>
 		<tr><td colspan=2><b>Cuda Device Info</b></td></tr>
 			<tr><td width=250 id="CudaDeviceKey"></td><td id="CudaDeviceValue"></td></tr>
@@ -145,6 +178,18 @@ function setLeftImageLabel(text) {
 			<tr><td width=250 id="CudaMemoryClockKey"></td><td id="CudaMemoryClockValue"></td></tr>
 			<tr><td width=300 id="CudaMemBusKey"></td><td id="CudaMemBusValue"></td></tr>
 		</table>
+		</div>
+		<div id="Calibration" style="display:none;">
+			<h2 id="header" style="font-color:red">Calibration Active</h2>
+			1. Depth Calibration: <input type=submit value="Perform Depth Calibration" class=btn onclick="Kinectboard.Calibrate();" /><br><br>
+			2. Offset Calibration<br>
+			<ul>
+				<li id="tl">Click top left pixel</li>
+				<li id="tr">Click top right pixel</li>
+				<li id="bl">Click bottom left pixel</li>
+				<li id="br">Click bottom right pixel</li>
+			</ul>
+		</div>
 	</td>
 </tr>
 </table><br>
