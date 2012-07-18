@@ -159,14 +159,6 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 \end{itemize}
 \end{frame}
 
-%\subsection{Architektur}
-%
-%\begin{frame}
-%\frametitle{Architektur}
-%\hspace*{0.9cm}\includegraphics[width=10.5cm]{architektur.png}
-%
-%\end{frame}
-
 \subsection{Vorgehen}
 
 \begin{frame}
@@ -186,9 +178,8 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 \end{itemize}
 \end{frame}
 
-\section{Hardware}
+\subsection{Hardware}
 
-\subsection{Kinect}
 \begin{frame}
 \frametitle{Kinect}
 
@@ -209,20 +200,19 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 \end{itemize}
 \end{frame}
 
-\subsection{Grafikkarte}
 \begin{frame}
 \frametitle{Grafikkarte}
 
 \hspace*{1.8cm}\includegraphics[width=8.5cm]{gts250.png}
 
 \begin{itemize}
-	\item Nvidia GeForce GTS 250
-	\item 16 Multiprozessoren mit je 8 Cores
+	\item nVidia GeForce GTS 250
+	\item 16 Multiprozessoren mit je 8 CUDA-Cores
+    \item CUDA Compute Capability 1.2
 	\item 1024 MB Device-Memory	
 \end{itemize}
 \end{frame}
 
-\subsection{Handschuh}
 \begin{frame}
 \frametitle{Handschuh}
 
@@ -267,7 +257,7 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 
 \begin{frame}
 \frametitle{Median-Filter}
-\includegraphics[width=12.4cm]{filter1.png}
+\includegraphics[width=\textwidth]{filter1.png}
 \end{frame}
 
 \subsection{Kalibrierung}
@@ -278,7 +268,7 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 	\item Arbeitet auf dem Tiefenbild
 	\item Filtert alle sich nicht bewegenden Punkte aus dem Tiefenbild.
 \end{itemize}
-\includegraphics[width=12.4cm]{filter2.png}
+\includegraphics[width=\textwidth]{filter2.png}
 \end{frame}
 
 \subsection{Gloweffekt}
@@ -289,7 +279,7 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 	\item Expandiert alle anzuzeigenden Punkte im Tiefenbild, anhand eines einstellbaren Radius
 \end{itemize}
 \vspace*{0.5cm}
-\includegraphics[width=12.4cm]{filter3.png}
+\includegraphics[width=\textwidth]{filter3.png}
 \end{frame}
 
 \subsection{RGB-Bild maskieren}
@@ -300,7 +290,7 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 	\item Rechnet das Tiefenbild auf das RGB-Bild um, und maskiert alle relevanten Pixel
 \end{itemize}
 
-\hspace*{2.2cm}\includegraphics[width=7.5cm]{trans.png}
+\includegraphics[width=0.5\textwidth]{trans.png}
 \end{frame}
 
 \subsection{Referenz-Farbe}
@@ -311,33 +301,8 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 	\item Zeigt nur noch die Pixel auf dem RGB-Bild an, welche farblich ähnlich genug zur Referenzfarbe sind
 \end{itemize}
 
-\includegraphics[width=12.4cm]{filter4.png}
+\includegraphics[width=\textwidth]{filter4.png}
 \end{frame}
-
-%\subsection{Speed-Up}
-%\begin{frame}
-%\frametitle{Speed-Up}
-%
-%{\Large $S(p)=\frac{\text{Ausführungszeit\, SingleCore}}{\text{Ausführungszeit\, MultiCore}}$}
-%\vspace*{0.4cm}
-%	\begin{table}
-%		\begin{tabular}{|l|l|l|}
-%		\hline
-%		\textbf{Recheneinheit} & \textbf{Median Filter} & \textbf{RGB-Bild maskieren}\\
-%		\hline
-%		CPU & 30 Millisekunden & ? Millisekunden \\ \hline
-%		GPU & 1,5 Milisekunden & ? Mikrosekunden \\ \hline
-%		\end{tabular}
-%	\end{table}
-%\vspace*{0.4cm}
-%{\large
-%\begin{itemize}
-%	\item[] Speed-Up Median Filter: 5\%
-%	\item[] Speed-Up RGB-Bild-Maskierung: over9000\%
-%\end{itemize}
-%}
-%
-%\end{frame}
 
 \begin{frame}{Median-Filter: Überblick}
     \newcounter{overviewstep}
@@ -574,24 +539,25 @@ Speedup durch CUDA: $\approx 12x$
 \begin{frame}
 \frametitle{Portierung auf GPU}
 \begin{itemize}
-\item Ausgangssituation (CPU)
+\item Ausgangssituation (Proof of concept, CPU)
 	\begin{itemize}
 		\item SDL Surface
 		\item Softwarerendering
-		\item 3 FPS bei einschalten der Filter
+		\item 3 FPS bei Einschalten der Filter
 	\end{itemize}
 \item Ziel (GPU)
 	\begin{itemize}
 		\item Bilder von Host auf Grafikkarte kopieren
 		\item Bilder auf Grafikkarte berechnen
 		\item Bilder von Grafikkarte auf Host kopieren
-		\item extrem langsam 
+		\item extrem langsam (memcpy-overhead)
 	\end{itemize}
 \end{itemize}
 \end{frame}
 
+\subsection{Minimierung der Datentransfers}
 \begin{frame}
-\frametitle{Optimierung 1}
+\frametitle{Minimierung der Datentransfers}
 \begin{itemize}
 \item Alle Bilder in einen Block
 \item Weniger Memcopys
@@ -601,17 +567,29 @@ Speedup durch CUDA: $\approx 12x$
 \end{itemize}
 \end{frame}
 
-\begin{frame}
-\frametitle{Optimierung 2}
+\subsection{GPU-Buffer mit OpenGL direkt rendern}
+\begin{frame}[fragile]
+\frametitle{GPU-Buffer mit OpenGL direkt rendern}
 \begin{itemize}
 \item Hardwarerendering mit OpenGL
-\item Spezielle OpenGL-Bufferobjekte
-\item Nur noch kopieren der Input-Bilder erforderlich
+\item OpenGL Pixel Buffer Objects (PBOs)
+\item Nur noch Kopieren der Input-Bilder erforderlich
 \end{itemize}
+\begin{lstlisting}
+cutilSafeCall(cudaGLMapBufferObject((void**)&gpu_raw_depth_output, rawDepthBufferID));
+// Process data on GPU
+cutilSafeCall(cudaGLUnmapBufferObject(rawDepthBufferID));
+
+glBindBuffer(GL_PIXEL_UNPACK_BUFFER, img_->bufferID);
+glBindTexture(GL_TEXTURE_2D, img_->textureID);
+glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 640, 480, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+// Setup texture position
+\end{lstlisting}
 \end{frame}
 
+\subsection{Flüssige Darstellung}
 \begin{frame}
-\frametitle{Optimierung 3}
+\frametitle{Flüssige Darstellung}
 \begin{itemize}
 \item Doublebuffering verhindert flackern
 \item BufferObjekt besteht aus front \& back
@@ -621,13 +599,16 @@ Speedup durch CUDA: $\approx 12x$
 \hspace*{4cm}\includegraphics[width=3cm]{double.png}
 \end{frame}
 
+\subsection{GUI}
 \begin{frame}
-\frametitle{GPU GUI}
+\frametitle{GUI}
 \begin{itemize}
-\item Alte SDL-GUI keine OpenGL unterstützung
-\item Awesomium
+\item Alte SDL-GUI keine OpenGL-Unterstützung
+\item Experimentelle Bestimmung der Schwellwerte etc.
+\item Anzeige von Zustand und Parametern
+\item OpenGL-GUI basiert auf Awesomium (Browser-Engine)
 \end{itemize}
-\hspace*{1,2cm}\includegraphics[width=10cm]{gui.png}
+\includegraphics[width=\textwidth]{gui.png}
 \end{frame}
 
 \begin{frame}{Live Demo}
