@@ -20,7 +20,7 @@ static uint8_t *gpu_rgb_image;
 static uchar4 *gpu_cont_mask;
 static uchar4 blank_image[640*480];
 
-__global__ void mask_rgb_gpu(uint8_t *gpu_rgb_image, uchar4 *gpu_raw_rgb_output, float4 reference_color) {
+__global__ void mask_rgb_gpu(uint8_t *gpu_rgb_image, uchar4 *gpu_raw_rgb_output, float4 reference_color, float filter_distance) {
     const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     const int i = (y * 640) + x;
@@ -43,7 +43,7 @@ __global__ void mask_rgb_gpu(uint8_t *gpu_rgb_image, uchar4 *gpu_raw_rgb_output,
                           pow((reference_color.y - g), 2) +
                           pow((reference_color.x - b), 2));
 
-    if (distance > 0.2f) {
+    if (distance > filter_distance) {
         gpu_rgb_image[i * 3 + 0] = 0;
         gpu_rgb_image[i * 3 + 1] = 0;
         gpu_rgb_image[i * 3 + 2] = 0;
@@ -147,7 +147,7 @@ void mask_rgb_clear_cont(void) {
     cudaMemcpy(gpu_cont_mask, blank_image, 640 * 480 * sizeof(uchar4), cudaMemcpyHostToDevice);
 }
 
-void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output, uchar4 *gpu_cont_rgb_output, float4 reference_color) {
+void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output, uchar4 *gpu_cont_rgb_output, float4 reference_color, float filter_distance) {
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
 
@@ -164,7 +164,7 @@ void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, u
         printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));
 
     cudaThreadSynchronize();
-    mask_rgb_gpu<<<gridsize, blocksize>>>(gpu_rgb_image, gpu_raw_rgb_output, reference_color);
+    mask_rgb_gpu<<<gridsize, blocksize>>>(gpu_rgb_image, gpu_raw_rgb_output, reference_color, filter_distance);
     err = cudaGetLastError();
     if (err != cudaSuccess)
         printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));

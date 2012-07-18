@@ -150,6 +150,7 @@ static void exit_callback() {
 
 static void set_distance_threshold_callback(float val) {
     printf("%f", val);
+    FILTER_DISTANCE = val;
 }
 
 static void set_depth_multiplier_callback(float val) {
@@ -420,7 +421,7 @@ int main(int argc, char *argv[]) {
         median_mask(calibration, gpu_median_output, gpu_masked_median_output);
         glow_filter(gpu_masked_median_output, gpu_glow_output, glow_start, glow_end);
 
-        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output, gpu_cont_rgb_output, reference_color);
+        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output, gpu_cont_rgb_output, reference_color, FILTER_DISTANCE);
         done_rgb_image();
 
         cutilSafeCall(cudaGLUnmapBufferObject(maskedMedianBufferID));
