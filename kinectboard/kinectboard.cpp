@@ -81,7 +81,25 @@ extern int ANIMATION_ONE_STEP;
 
 // Die Referenz-Farbe (vom Nutzer ausgewählt). Wird normiert gespeichert:
 // Jeder Farbanteil wird durch √(r² + g² + b²) geteilt.
-float4 reference_color = { -1, -1, -1, -1 };
+float4 reference_color = {
+    0.006413,
+    0.333484,
+    0.942734,
+    -1
+};
+
+bool calibration_mode = false;
+int calibration_step = 0;
+
+uint2 calibrated_offset;
+
+struct calibration_values {
+    uint2 tl;
+    uint2 tr;
+    uint2 bl;
+    uint2 br;
+} calibration_values;
+
 
 uint16_t glow_start = 0;
 uint16_t glow_end = 78;
@@ -98,11 +116,7 @@ bool calibration = false;
 bool fullscreen_canvas = false;
 
 static void select_reference_color(int x, int y) {
-    float offset = SCREEN_WIDTH/1280.f;
-
-    printf("Handling click on x = %d, y = %d\n", x, y);
-    x *= (1280.0f / SCREEN_WIDTH);
-    y *= (1280.0f / SCREEN_WIDTH);
+    static float offset = SCREEN_WIDTH/1280.0f;
     printf("(After scaling) Handling click on x = %d, y = %d\n", x, y);
     GLuint left_buffer, right_buffer, buffer;
     kb_images_current_buffers(&left_buffer, &right_buffer);
@@ -121,7 +135,7 @@ static void select_reference_color(int x, int y) {
     cudaMemcpy(&pixel, gpu_buffer + (y * 640) + x, sizeof(uchar4), cudaMemcpyDeviceToHost);
     printf("pixel-value: %d, %d, %d (%d)\n", pixel.x, pixel.y, pixel.z, pixel.w);
     static char rgbbuffer[4096];
-    snprintf(rgbbuffer, sizeof(rgbbuffer), "%d,%d,%d", pixel.z, pixel.y, pixel.x);
+    snprintf(rgbbuffer, sizeof(rgbbuffer), "%d,%d,%d", pixel.x, pixel.y, pixel.z);
     kb_ui_call_javascript("SetRGB", rgbbuffer);
 
     double r = pixel.z;
@@ -132,26 +146,71 @@ static void select_reference_color(int x, int y) {
     reference_color.x = r / nominator;
     reference_color.y = g / nominator;
     reference_color.z = b / nominator;
+    printf("reference_color final: %f %f %f\n",
+            reference_color.x, reference_color.y, reference_color.z);
 
     cutilSafeCall(cudaGLUnmapBufferObject(buffer));
+}
+
+static void handle_calibration_click(int x, int y) {
+    printf("Calibration click on x = %d, y = %d\n", x, y);
+    if (calibration_step == 0) {
+        printf("top left\n");
+        kb_ui_call_javascript("MarkAsClicked", "tl");
+        calibration_values.tl = (uint2){ x, y };
+    } else if (calibration_step == 1) {
+        printf("top right\n");
+        kb_ui_call_javascript("MarkAsClicked", "tr");
+        calibration_values.tr = (uint2){ x, y };
+    } else if (calibration_step == 2) {
+        printf("bottom left\n");
+        kb_ui_call_javascript("MarkAsClicked", "bl");
+        calibration_values.bl = (uint2){ x, y };
+    } else {
+        printf("bottom right\n");
+        kb_ui_call_javascript("MarkAsClicked", "br");
+        calibration_values.br = (uint2){ x, y };
+
+        int x_sum = 0;
+        int y_sum = 0;
+
+        x_sum += abs(150 - calibration_values.tl.x);
+        x_sum += abs(550 - calibration_values.tr.x);
+        x_sum += abs(150 - calibration_values.bl.x);
+        x_sum += abs(550 - calibration_values.br.x);
+
+        y_sum += abs(300 - calibration_values.tl.y);
+        y_sum += abs(300 - calibration_values.tr.y);
+        y_sum += abs(400 - calibration_values.bl.y);
+        y_sum += abs(400 - calibration_values.br.y);
+
+        x_sum /= 4;
+        y_sum /= 4;
+
+        printf("average offset: %d x, %d y\n",
+                x_sum, y_sum);
+    }
+
+    calibration_step++;
 }
 
 // Callbacks
 
 // Calibration button callback
 static void run_calibration_callback(void) {
+    calibration = !calibration;
     if (calibration) 
         median_clear_calibration();
 
 
 } 
 static void start_calibration_callback(void) {
-    calibration = true;
-    kb_ui_call_javascript("MarkAsClicked","tl");
+    calibration_mode = true;
+    calibration_step = 0;
 } 
 
 static void end_calibration_callback(void) {
-    calibration = false;
+    calibration_mode = false;
 } 
 
 // Exit Callback
@@ -182,6 +241,8 @@ static void set_glow_area_end_callback(float val) {
 
 static void kb_poll_events(void) {
     SDL_Event event;
+    static float offset = SCREEN_WIDTH/1280.0f;
+    int x, y;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {  
             case SDL_MOUSEMOTION:
@@ -191,8 +252,23 @@ static void kb_poll_events(void) {
                 kb_ui_inject_mouse_button(event.button.button, false);
                 break;
             case SDL_MOUSEBUTTONDOWN:
-                if (event.button.y < 480 * (SCREEN_WIDTH/1280.f)) {
-                    select_reference_color(event.button.x, event.button.y);
+                if (event.button.y < 480 * (SCREEN_WIDTH/1280.f) || fullscreen_canvas) {
+                    x = event.button.x;
+                    y = event.button.y;
+                    printf("Handling click on x = %d, y = %d\n", x, y);
+                    if (fullscreen_canvas) {
+                        x = x * 0.625f;
+                        y = y * 0.625f;
+                    } else {
+                        x *= (1280.0f / SCREEN_WIDTH);
+                        y *= (1280.0f / SCREEN_WIDTH);
+                    }
+                    printf("after scaling: %d, %d\n", x, y);
+                    if (calibration_mode) {
+                        handle_calibration_click(x, y);
+                    } else {
+                        select_reference_color(x, y);
+                    }
                 } else {
                     kb_ui_inject_mouse_button(event.button.button, true);
                 }
@@ -364,6 +440,8 @@ int main(int argc, char *argv[]) {
     kb_ui_register_value_callback("SetDepthDifferenceThreshold", set_depth_difference_threshold_callback);
     kb_ui_register_value_callback("SetGlowAreaStart", set_glow_area_start_callback);
     kb_ui_register_value_callback("SetGlowAreaEnd", set_glow_area_end_callback);
+
+    kb_ui_call_javascript("SetRGB", "142,51,19");
 
     // The CUDA Device Info requires a valid UI since the info is displayed there
     print_cuda_device_info();

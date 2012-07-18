@@ -130,7 +130,7 @@ void kb_images_render() {
 }
 
 void kb_images_render_canvas_only() {
-    glColor4f(1,1,1,1); 
+    //glColor4f(1,1,1,1); 
     kb_image *img;
     kb_image *img_;
     CIRCLEQ_FOREACH(img, &image_head, image) {
