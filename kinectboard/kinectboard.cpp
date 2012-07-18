@@ -75,6 +75,8 @@ GLuint calibrationTextureID;
 int current_background = 0;
 uint8_t *backgrounds[] = {
     NULL,
+    NULL,
+    NULL,
     NULL
 };
 uint16_t *depth_buffer;
@@ -107,9 +109,9 @@ struct calibration_values {
 
 
 uint16_t glow_start = 0;
-uint16_t glow_end = 78;
+uint16_t glow_end = 71;
 
-double FILTER_DISTANCE = 0.2f;
+double FILTER_DISTANCE = 0.25f;
 
 double DEPTH_MASK_MULTIPLIER = 0.0f;
 
@@ -482,6 +484,16 @@ int main(int argc, char *argv[]) {
     SDL_Surface* surface = SDL_LoadBMP("../data/calibration.bmp");
     cudaMalloc((void**)&(backgrounds[1]), 640 * 480 * 3 * sizeof(uint8_t));
     loadimg_convert((uint8_t*)surface->pixels, backgrounds[1]);
+
+    surface = SDL_LoadBMP("../data/malen_haus.bmp");
+    cudaMalloc((void**)&(backgrounds[2]), 640 * 480 * 3 * sizeof(uint8_t));
+    loadimg_convert((uint8_t*)surface->pixels, backgrounds[2]);
+
+    surface = SDL_LoadBMP("../data/malen_stern.bmp");
+    cudaMalloc((void**)&(backgrounds[3]), 640 * 480 * 3 * sizeof(uint8_t));
+    loadimg_convert((uint8_t*)surface->pixels, backgrounds[3]);
+
+
 
 
     printf("gl set up.\n");
