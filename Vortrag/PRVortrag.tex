@@ -237,14 +237,36 @@ Jede einigermaßen ebene Fläche soll als Whiteboard dienen können.
 
 \section{Algorithmen}
 
-\subsection{Median Filter}
+\subsection{Median-Filter}
 \begin{frame}
-\frametitle{Median Filter}
+\frametitle{Median-Filter}
 \begin{itemize}
 	\item Arbeitet auf dem Tiefenbild
 	\item Filtert das Rauschen aus dem Tiefenbild heraus
 \end{itemize}
 \vspace*{1cm}
+
+\begin{center}
+\begin{tikzpicture}[every node/.style={draw,outer sep=0pt,thick,minimum width=1.5cm,minimum height=1.5cm}]
+    \node[fill=gray] (i) {$i$};
+    \node (im1) at (i.west) [anchor=east] {$-1, 0$};
+    \node (ip1) at (i.east) [anchor=west] {$+1, 0$};
+
+    % obere Reihe
+    \node (im1m1) at (im1.north) [anchor=south] {$-1, -1$};
+    \node (im1m0) at (i.north) [anchor=south] {$0, -1$};
+    \node (im1p1) at (ip1.north) [anchor=south] {$+1, -1$};
+
+    % untere Reihe
+    \node (ip1m1) at (im1.south) [anchor=north] {$-1, +1$};
+    \node (ip1m0) at (i.south) [anchor=north] {$0, +1$};
+    \node (ip1p1) at (ip1.south) [anchor=north] {$+1, +1$};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+\begin{frame}
+\frametitle{Median-Filter}
 \includegraphics[width=12.4cm]{filter1.png}
 \end{frame}
 
