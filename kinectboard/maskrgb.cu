@@ -147,9 +147,12 @@ void mask_rgb_clear_cont(void) {
     cudaMemcpy(gpu_cont_mask, blank_image, 640 * 480 * sizeof(uchar4), cudaMemcpyHostToDevice);
 }
 
-void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output, uchar4 *gpu_cont_rgb_output, float4 reference_color, float filter_distance) {
+void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output, uchar4 *gpu_cont_rgb_output, float4 reference_color, float filter_distance, uint8_t *gpu_overlay_on) {
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
+
+    if (gpu_overlay_on == NULL)
+        gpu_overlay_on = gpu_rgb_image;
 
     cudaError_t err = cudaMemcpy(gpu_rgb_image, rgb_image, 640 * 480 * 3 * sizeof(uint8_t), cudaMemcpyHostToDevice);
     if (err != cudaSuccess)
@@ -158,7 +161,7 @@ void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, u
     cudaMemcpy(gpu_output, blank_image, 640*480 * sizeof(uchar4), cudaMemcpyHostToDevice);
 
     // XXX: This lags one frame behind. Also, we use 'i' instead of 'di' so we use slightly wrong coordinates.
-    mask_cont_gpu<<<gridsize, blocksize>>>(gpu_rgb_image, gpu_cont_rgb_output, gpu_cont_mask);
+    mask_cont_gpu<<<gridsize, blocksize>>>(gpu_overlay_on, gpu_cont_rgb_output, gpu_cont_mask);
     err = cudaGetLastError();
     if (err != cudaSuccess)
         printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));

@@ -36,6 +36,7 @@
 #include "median.h"
 #include "glow.h"
 #include "maskrgb.h"
+#include "loadimg.h"
 #include "kinectboard_ui.h"
 #include "cudadeviceinfo.h"
 
@@ -292,6 +293,7 @@ int main(int argc, char *argv[]) {
     if (init_kinect)
         kinect_init();
     mask_rgb_init();
+    loadimg_init();
     
     /* Initialize SDL */
     SDL_Init(SDL_INIT_VIDEO);
@@ -372,9 +374,15 @@ int main(int argc, char *argv[]) {
     kb_image_create("Cont RGB image", contRgbBufferID, contRgbTextureID);
 
     // Load a Texture
-    loadTextureFromFile("../data/calibration.bmp", &calibrationBufferID, &calibrationTextureID);
-    kb_image_create("Calibration", calibrationBufferID, calibrationTextureID);
+    //loadTextureFromFile("../data/calibration.bmp", &calibrationBufferID, &calibrationTextureID);
+    //kb_image_create("Calibration", calibrationBufferID, calibrationTextureID);
 
+    SDL_Surface* surface = SDL_LoadBMP("../data/calibration.bmp");
+    printf("bpp = %d\n", surface->format->BytesPerPixel);
+    uint8_t *gpu_calibration_buffer;
+    cudaMalloc((void**)&gpu_calibration_buffer, 640 * 480 * 3 * sizeof(uint8_t));
+    //cudaMemcpy(gpu_calibration_buffer, surface->pixels, 640*480*3*sizeof(uint8_t), cudaMemcpyHostToDevice);
+    loadimg_convert((uint8_t*)surface->pixels, gpu_calibration_buffer);
 
 
     printf("gl set up.\n");
@@ -448,7 +456,7 @@ int main(int argc, char *argv[]) {
         median_mask(calibration, gpu_median_output, gpu_masked_median_output);
         glow_filter(gpu_masked_median_output, gpu_glow_output, glow_start, glow_end);
 
-        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output, gpu_cont_rgb_output, reference_color, FILTER_DISTANCE);
+        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output, gpu_cont_rgb_output, reference_color, FILTER_DISTANCE, gpu_calibration_buffer);
         done_rgb_image();
 
         cutilSafeCall(cudaGLUnmapBufferObject(maskedMedianBufferID));
