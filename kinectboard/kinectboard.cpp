@@ -212,6 +212,7 @@ static void kb_poll_events(void) {
                         break;
                     case SDLK_f:
                         fullscreen_canvas = !fullscreen_canvas;
+                        break;
                     case SDLK_c:
                         mask_rgb_clear_cont();
                         break;
