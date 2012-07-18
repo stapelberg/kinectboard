@@ -77,6 +77,7 @@ uint8_t *backgrounds[] = {
     NULL,
     NULL,
     NULL,
+    NULL,
     NULL
 };
 uint16_t *depth_buffer;
@@ -494,6 +495,9 @@ int main(int argc, char *argv[]) {
     loadimg_convert((uint8_t*)surface->pixels, backgrounds[3]);
 
 
+    surface = SDL_LoadBMP("../data/empty.bmp");
+    cudaMalloc((void**)&(backgrounds[4]), 640 * 480 * 3 * sizeof(uint8_t));
+    loadimg_convert((uint8_t*)surface->pixels, backgrounds[4]);
 
 
     printf("gl set up.\n");
