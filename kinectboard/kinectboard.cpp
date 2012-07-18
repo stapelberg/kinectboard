@@ -83,7 +83,7 @@ extern int ANIMATION_ONE_STEP;
 float4 reference_color = { -1, -1, -1, -1 };
 
 uint16_t glow_start = 0;
-uint16_t glow_end = 1024;
+uint16_t glow_end = 78;
 
 double FILTER_DISTANCE = 0.2f;
 
