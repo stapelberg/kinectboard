@@ -74,9 +74,11 @@ void kb_image_create(const char *label, GLuint bufferID, GLuint textureID) {
 }
 
 void kb_images_render() {
+    printf("render enter\n");
     int i = 0, cnt = 0;
     SDL_Rect area;
     kb_image *img;
+    int old_animation_step = animation_step;
     CIRCLEQ_FOREACH(img, &image_head, image) {
         if (animation_step > 0) {
             if (i++ < startidx-1)
@@ -96,7 +98,9 @@ void kb_images_render() {
             area = img->area;
             area.x += animation_step;
         }
-        
+
+        printf("Drawing image i=%d to area x=%d, animation_step = %d, cnt = %d\n",
+                i, area.x, animation_step, cnt);
         if (animation_step > 0) {
             animation_step -= ANIMATION_ONE_STEP;
             if (animation_step < 0)
@@ -105,8 +109,10 @@ void kb_images_render() {
 
         if (animation_step < 0) {
             animation_step += ANIMATION_ONE_STEP;
-            if (animation_step >= 0)
+            if (animation_step >= 0) {
                 animation_step = 0;
+                old_animation_step = 0;
+            }
         }
 
         glBindBuffer(GL_PIXEL_UNPACK_BUFFER, img->bufferID);
@@ -121,10 +127,10 @@ void kb_images_render() {
             glTexCoord2f(1.0f, 1.0f);   glVertex2f(area.x + VIEWPORT_WIDTH, SCREEN_WIDTH == 1024 ? 384.f : 288.0f);
         glEnd();
 
-        if (animation_step != 0) {
-            if (++cnt == 3) break;
+        if (old_animation_step != 0) {
+            if (++cnt >= 3) break;
         } else {
-            if (++cnt == 2) break;
+            if (++cnt >= 2) break;
         }        
     }
 }
@@ -173,6 +179,7 @@ static void fix_areas(void) {
 }
 
 void kb_images_scroll_left(void) {
+    printf("\nSCROLL LEFT\n\n");
     // TODO: feedback, dass man bereits ganz links am ende ist
     if (startidx == 0)
         return;
@@ -184,6 +191,7 @@ void kb_images_scroll_left(void) {
 }
 
 void kb_images_scroll_right(void) {
+    printf("\nSCROLL RIGHT\n\n");
     if(startidx == queue_size-2)
         return;
     startidx++;
