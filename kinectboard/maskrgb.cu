@@ -55,7 +55,7 @@ __global__ void mask_rgb_gpu(uint8_t *gpu_rgb_image, uchar4 *gpu_raw_rgb_output,
  * from the glow filter as a mask to the RGB image. In gpu_output we will have
  * the RGB values for all areas which are relevant.
  */
-__global__ void translate_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, uchar4 *gpu_output, uchar4 *gpu_cont_mask) {
+__global__ void translate_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, uchar4 *gpu_output, uchar4 *gpu_cont_mask, uint2 offset) {
     const int x = (blockIdx.x * blockDim.x) + threadIdx.x;
     const int y = (blockIdx.y * blockDim.y) + threadIdx.y;
     const int i = (y * 640) + x;
@@ -110,10 +110,13 @@ __global__ void translate_rgb_gpu(uchar4 *gpu_glow, uint8_t *gpu_rgb_image, ucha
     gpu_output[i].z = gpu_rgb_image[3 * di + 2];
 
     if (gpu_rgb_image[3 * di + 0] > 0) {
-        gpu_cont_mask[i].w = 0;
-        gpu_cont_mask[i].x = gpu_rgb_image[3 * di + 0];
-        gpu_cont_mask[i].y = gpu_rgb_image[3 * di + 1];
-        gpu_cont_mask[i].z = gpu_rgb_image[3 * di + 2];
+        int offset_i = ((y + offset.y) * 640) + (x - offset.x);
+        if (offset_i < (640*480)) {
+            gpu_cont_mask[offset_i].w = 0;
+            gpu_cont_mask[offset_i].x = gpu_rgb_image[3 * di + 0];
+            gpu_cont_mask[offset_i].y = gpu_rgb_image[3 * di + 1];
+            gpu_cont_mask[offset_i].z = gpu_rgb_image[3 * di + 2];
+        }
     }
 }
 
@@ -147,7 +150,7 @@ void mask_rgb_clear_cont(void) {
     cudaMemcpy(gpu_cont_mask, blank_image, 640 * 480 * sizeof(uchar4), cudaMemcpyHostToDevice);
 }
 
-void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output, uchar4 *gpu_cont_rgb_output, float4 reference_color, float filter_distance, uint8_t *gpu_overlay_on) {
+void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, uchar4 *gpu_raw_rgb_output, uchar4 *gpu_cont_rgb_output, float4 reference_color, float filter_distance, uint8_t *gpu_overlay_on, uint2 offset) {
     dim3 blocksize(BLOCK_X, BLOCK_Y);
     dim3 gridsize(GRID_X, GRID_Y);
 
@@ -173,7 +176,7 @@ void mask_rgb(uchar4 *gpu_glow_output, uint8_t *rgb_image, uchar4 *gpu_output, u
         printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));
 
     cudaThreadSynchronize();
-    translate_rgb_gpu<<<gridsize, blocksize>>>(gpu_glow_output, gpu_rgb_image, gpu_output, gpu_cont_mask);
+    translate_rgb_gpu<<<gridsize, blocksize>>>(gpu_glow_output, gpu_rgb_image, gpu_output, gpu_cont_mask, offset);
     err = cudaGetLastError();
     if (err != cudaSuccess)
         printf("Could not call kernel. Wrong gridsize/blocksize? %s\n", cudaGetErrorString(err));

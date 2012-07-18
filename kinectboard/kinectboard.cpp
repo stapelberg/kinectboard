@@ -72,6 +72,11 @@ GLuint maskRgbTextureID;
 GLuint contRgbTextureID;
 GLuint calibrationTextureID;
 
+int current_background = 0;
+uint8_t *backgrounds[] = {
+    NULL,
+    NULL
+};
 uint16_t *depth_buffer;
 
 GLuint gl_depth_tex;
@@ -91,7 +96,7 @@ float4 reference_color = {
 bool calibration_mode = false;
 int calibration_step = 0;
 
-uint2 calibrated_offset;
+uint2 calibrated_offset = { 30, 60 };
 
 struct calibration_values {
     uint2 tl;
@@ -189,6 +194,7 @@ static void handle_calibration_click(int x, int y) {
 
         printf("average offset: %d x, %d y\n",
                 x_sum, y_sum);
+        calibrated_offset = (uint2){ x_sum, y_sum };
     }
 
     calibration_step++;
@@ -207,6 +213,7 @@ static void run_calibration_callback(void) {
 static void start_calibration_callback(void) {
     calibration_mode = true;
     calibration_step = 0;
+    current_background = 1;
 } 
 
 static void end_calibration_callback(void) {
@@ -291,6 +298,11 @@ static void kb_poll_events(void) {
                         break;
                     case SDLK_c:
                         mask_rgb_clear_cont();
+                        break;
+                    case SDLK_b:
+                        current_background++;
+                        if (current_background >= (sizeof(backgrounds) / sizeof(uint8_t*)))
+                            current_background = 0;
                         break;
                     default:
                         printf("Unknown key pressed.\n");
@@ -468,11 +480,8 @@ int main(int argc, char *argv[]) {
     //kb_image_create("Calibration", calibrationBufferID, calibrationTextureID);
 
     SDL_Surface* surface = SDL_LoadBMP("../data/calibration.bmp");
-    printf("bpp = %d\n", surface->format->BytesPerPixel);
-    uint8_t *gpu_calibration_buffer;
-    cudaMalloc((void**)&gpu_calibration_buffer, 640 * 480 * 3 * sizeof(uint8_t));
-    //cudaMemcpy(gpu_calibration_buffer, surface->pixels, 640*480*3*sizeof(uint8_t), cudaMemcpyHostToDevice);
-    loadimg_convert((uint8_t*)surface->pixels, gpu_calibration_buffer);
+    cudaMalloc((void**)&(backgrounds[1]), 640 * 480 * 3 * sizeof(uint8_t));
+    loadimg_convert((uint8_t*)surface->pixels, backgrounds[1]);
 
 
     printf("gl set up.\n");
@@ -546,7 +555,7 @@ int main(int argc, char *argv[]) {
         median_mask(calibration, gpu_median_output, gpu_masked_median_output);
         glow_filter(gpu_masked_median_output, gpu_glow_output, glow_start, glow_end);
 
-        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output, gpu_cont_rgb_output, reference_color, FILTER_DISTANCE, gpu_calibration_buffer);
+        mask_rgb(gpu_glow_output, take_rgb_image(), gpu_mask_rgb_output, gpu_raw_rgb_output, gpu_cont_rgb_output, reference_color, FILTER_DISTANCE, backgrounds[current_background], calibrated_offset);
         done_rgb_image();
 
         cutilSafeCall(cudaGLUnmapBufferObject(maskedMedianBufferID));
